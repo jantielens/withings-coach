@@ -9,7 +9,7 @@ import type { BloodPressureData } from '@/lib/types/metrics';
 export default function Home() {
   const { data, summary, isLoading, error, refresh } = useHealthData<BloodPressureData>({
     metricType: 'blood_pressure',
-    dateRange: { days: 7 },
+    dateRange: { days: 30 },
   });
 
   const latestReading = data.length > 0
@@ -27,7 +27,7 @@ export default function Home() {
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-gray-900">Withings Coach</h1>
-            <p className="text-sm text-gray-500">Last 7 days</p>
+            <p className="text-sm text-gray-500">Last 30 days</p>
           </div>
           <button
             onClick={refresh}

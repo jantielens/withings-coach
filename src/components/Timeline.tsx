@@ -1,7 +1,8 @@
 'use client';
 
-import { Fragment } from 'react';
+import { Fragment, useState, useMemo } from 'react';
 import type { ReadingGroup, BloodPressureData } from '@/lib/types/metrics';
+import { hasHighRiskCategory } from '@/lib/ui/category-config';
 import { ZoneLegend } from './ZoneLegend';
 import { DaySummary } from './DaySummary';
 
@@ -23,6 +24,20 @@ function groupByDay(groups: BloodPressureGroup[]): Map<string, BloodPressureGrou
   return dayGroups;
 }
 
+/** Compute which days should auto-expand (Grade 2+, Grade 3, ISH) */
+function computeAutoExpanded(
+  dayEntries: [string, BloodPressureGroup[]][]
+): Set<string> {
+  const expanded = new Set<string>();
+  for (const [dayKey, dayReadings] of dayEntries) {
+    const categories = dayReadings.map((r) => r.average.category);
+    if (hasHighRiskCategory(categories)) {
+      expanded.add(dayKey);
+    }
+  }
+  return expanded;
+}
+
 interface TimelineProps {
   readings: BloodPressureGroup[];
   isLoading: boolean;
@@ -32,17 +47,15 @@ interface TimelineProps {
 
 function SkeletonDot() {
   return (
-    <div className="flex items-start gap-3 animate-pulse">
+    <div className="flex items-center gap-3 animate-pulse">
       <div className="flex-shrink-0 w-6 flex items-center justify-center">
         <div className="w-4 h-4 rounded-full bg-gray-200" />
       </div>
-      <div className="flex-1 rounded-xl bg-gray-50 p-3 space-y-2">
-        <div className="flex items-center gap-2">
-          <div className="h-4 w-20 bg-gray-200 rounded" />
-          <div className="h-4 w-14 bg-gray-200 rounded-full" />
-        </div>
-        <div className="h-2 w-full bg-gray-100 rounded-full" />
-        <div className="h-3 w-32 bg-gray-100 rounded" />
+      <div className="flex-1 flex items-center gap-3 py-2 px-3">
+        <div className="h-4 w-20 bg-gray-200 rounded" />
+        <div className="h-2 w-24 bg-gray-100 rounded-full" />
+        <div className="h-4 w-14 bg-gray-200 rounded-full" />
+        <div className="h-3 w-10 bg-gray-100 rounded" />
       </div>
     </div>
   );
@@ -70,7 +83,9 @@ export function Timeline({ readings, isLoading, error, onRetry }: TimelineProps)
         <div className="h-4 w-32 bg-gray-200 rounded animate-pulse mb-4" />
         <div className="relative ml-3">
           <div className="absolute left-[11px] top-0 bottom-0 w-0.5 bg-gray-100" />
-          <div className="space-y-4 relative">
+          <div className="space-y-2 relative">
+            <SkeletonDot />
+            <SkeletonDot />
             <SkeletonDot />
             <SkeletonDot />
             <SkeletonDot />
@@ -84,12 +99,38 @@ export function Timeline({ readings, isLoading, error, onRetry }: TimelineProps)
     return null;
   }
 
+  return <TimelineContent readings={readings} />;
+}
+
+/** Inner component so hooks are only called when we have data */
+function TimelineContent({ readings }: { readings: BloodPressureGroup[] }) {
   // Sort newest first
-  const sorted = [...readings].sort(
-    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  const sorted = useMemo(
+    () =>
+      [...readings].sort(
+        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      ),
+    [readings]
   );
-  const grouped = groupByDay(sorted);
-  const dayEntries = Array.from(grouped.entries());
+  const grouped = useMemo(() => groupByDay(sorted), [sorted]);
+  const dayEntries = useMemo(() => Array.from(grouped.entries()), [grouped]);
+
+  // Auto-expand high-risk days, track user toggles
+  const autoExpanded = useMemo(() => computeAutoExpanded(dayEntries), [dayEntries]);
+
+  const [expandedDays, setExpandedDays] = useState<Set<string>>(() => autoExpanded);
+
+  const toggleDay = (dayKey: string) => {
+    setExpandedDays((prev) => {
+      const next = new Set(prev);
+      if (next.has(dayKey)) {
+        next.delete(dayKey);
+      } else {
+        next.add(dayKey);
+      }
+      return next;
+    });
+  };
 
   return (
     <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-100">
@@ -109,6 +150,8 @@ export function Timeline({ readings, isLoading, error, onRetry }: TimelineProps)
                 dayReadings={dayReadings}
                 isFirst={idx === 0}
                 isLast={idx === dayEntries.length - 1}
+                expanded={expandedDays.has(dayKey)}
+                onToggle={() => toggleDay(dayKey)}
               />
               {idx < dayEntries.length - 1 && (
                 <div className="ml-[11px] w-0.5 h-4 bg-gray-300" aria-hidden="true" />

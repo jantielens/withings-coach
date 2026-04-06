@@ -1,7 +1,7 @@
 import { MetricType } from '@/lib/types/metrics';
 
 export const METRIC_DEFAULTS = {
-  defaultDays: 7,
+  defaultDays: 30,
   defaultSummary: true,
 } as const;
 

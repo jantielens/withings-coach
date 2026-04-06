@@ -17,6 +17,9 @@
 
 ## Learnings
 
+**2025-07-22 — Default Date Range Change (7 → 30 days):**
+- Changed `METRIC_DEFAULTS.defaultDays` from 7 to 30 in `src/config/metrics.ts` to support the new condensed timeline view. The route, service layer, and Withings adapter required zero structural changes — they're fully parameterized via `DateRange` and handle arbitrary volumes. Frontend can still override with `?from=...` query param (e.g., 7-day window for expanded mode). Single config line change, build passes.
+
 **2025-07-18 — ESC/ESH 2018 Classification + Multi-Reading Grouping:**
 - Switched BP classification from AHA 2017 to ESC/ESH 2018 (European Society of Cardiology). New categories: Optimal, Normal, High Normal, Grade 1/2/3, Isolated Systolic Hypertension. Updated BPCategory enum, classification logic, and all downstream consumers.
 - ISH is checked first (systolic ≥140 AND diastolic <90) — this is a separate clinical entity from Grades 1-3. Even systolic ≥180 with diastolic <90 is ISH, not Grade 3, because the grades assume both components are elevated.

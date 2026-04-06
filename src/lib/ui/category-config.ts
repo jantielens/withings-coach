@@ -87,3 +87,31 @@ export function worstCategory(categories: BPCategory[]): BPCategory {
     categoryConfig[cat].severity > categoryConfig[worst].severity ? cat : worst
   );
 }
+
+/** Returns the most frequent category from a list */
+export function dominantCategory(categories: BPCategory[]): BPCategory {
+  if (categories.length === 0) return BPCategory.OPTIMAL;
+  const counts = new Map<BPCategory, number>();
+  for (const cat of categories) {
+    counts.set(cat, (counts.get(cat) ?? 0) + 1);
+  }
+  let best = categories[0];
+  let bestCount = 0;
+  for (const [cat, count] of counts) {
+    if (count > bestCount || (count === bestCount && categoryConfig[cat].severity > categoryConfig[best].severity)) {
+      best = cat;
+      bestCount = count;
+    }
+  }
+  return best;
+}
+
+/** Returns true if any category warrants auto-expand (Grade 2+, Grade 3, ISH) */
+export function hasHighRiskCategory(categories: BPCategory[]): boolean {
+  return categories.some(
+    (cat) =>
+      cat === BPCategory.GRADE_2 ||
+      cat === BPCategory.GRADE_3 ||
+      cat === BPCategory.ISOLATED_SYSTOLIC
+  );
+}

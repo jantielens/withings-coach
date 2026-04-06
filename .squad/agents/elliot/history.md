@@ -163,6 +163,16 @@ Timeline component accepts optional date range filter for future coaching agent 
 **Orchestration log:** `.squad/orchestration-log/2026-04-06T19-25-elliot-viz-implementation.md`  
 **Decision document:** Merged into `.squad/decisions.md` (Visualization Decisions section, Decisions 1–8)
 
+### 2025-07-15 — Condensed Timeline View (Default)
+
+- **Condensed row pattern**: Each day is one compact line: dot + date + distribution bar + dominant category badge + (n=X) count + chevron. Uses flexbox with `flex-wrap` for mobile. Clicking anywhere toggles the full expanded card.
+- **State lifted to Timeline**: Expanded state moved from `DaySummary` (local `useState`) to `Timeline` (parent `Set<string>`). This enables auto-expand logic — days with Grade 2+, Grade 3, or ISH readings start expanded per Kelso's clinical safety rule.
+- **New helpers in category-config.ts**: Added `dominantCategory()` (most frequent category, severity tiebreak), `hasHighRiskCategory()` (checks for Grade 2+/Grade 3/ISH). Both pure functions, easily testable.
+- **Low-confidence fade**: Days with fewer than 3 reading groups get `opacity-70` on the condensed row — visual signal that the day's data is thin.
+- **30-day default**: Updated `page.tsx` from `days: 7` → `days: 30`, header subtitle from "Last 7 days" to "Last 30 days". The condensed view makes 30 days scannable.
+- **Skeleton updated**: Loading skeleton now matches the condensed row shape (single line) instead of the old full-card skeleton.
+- **Smooth transitions preserved**: Expanded card uses `max-h` + `opacity` + `transition-all duration-200` — same pattern as before, just applied to the expanded card section below the condensed row.
+
 ### 2025-07-15 — Timeline CSS/Alignment Fixes
 
 - **Flex-col dot column pattern**: Replaced single absolute-positioned vertical line with per-entry flex-col dot columns (`self-stretch flex flex-col items-center`). `flex-1` spacers above/below the dot auto-center the dot vertically on the summary card. First entry omits top line, last entry omits bottom line — line naturally starts/ends at dot centers.
