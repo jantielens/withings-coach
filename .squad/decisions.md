@@ -716,3 +716,25 @@ These principles should carry forward to future metric summaries (HR zones, etc.
 
 ---
 
+
+### UI Decisions — RangeBar Component
+
+**From:** Elliot (Frontend)  
+**Date:** 2025-07-15  
+**Context:** Original single blue bar in RangeBar was unclear — no scale reference and only systolic shown.
+
+#### Decision: Dual Systolic/Diastolic Bars with ESC Threshold Tick Marks
+
+**What:**
+1. **Dual bars** — Systolic (rose-400) on top, diastolic (sky-400) below. Labeled "SYS" / "DIA" in 9px gray text. Both share the same 80–200 mmHg fixed scale.
+2. **Tick marks** — Key ESC-zone-boundary thresholds (80, 120, 140, 160, 200) shown once below the bottom bar in 9px gray-400 text.
+3. **Props changed** — `min`/`max` replaced with `sysMin`/`sysMax`/`diaMin`/`diaMax`. DaySummary updated to pass all four values (already computed there).
+
+**Rationale:**
+- Warm/cool color split (rose vs sky) makes systolic/diastolic instantly distinguishable.
+- Shared scale lets users visually compare where each falls relative to ESC zones.
+- Tick marks only appear once (below bottom bar) to avoid clutter.
+
+**Status:** Implemented ✓
+
+---
