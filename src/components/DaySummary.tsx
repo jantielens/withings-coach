@@ -60,7 +60,7 @@ export function DaySummary({ dayReadings, isLast }: DaySummaryProps) {
     <div className="relative">
       {/* Tier 1 dot on the main vertical line */}
       <div
-        className={`flex items-start gap-3 cursor-pointer group ${isLast ? '' : ''}`}
+        className={`flex items-center gap-3 cursor-pointer group ${isLast ? '' : ''}`}
         onClick={() => setExpanded(!expanded)}
         role="button"
         tabIndex={0}
