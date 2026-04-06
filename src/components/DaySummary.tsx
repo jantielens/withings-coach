@@ -133,11 +133,11 @@ export function DaySummary({ dayReadings, isLast }: DaySummaryProps) {
           expanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
         }`}
       >
-        <div className="ml-6 pl-4 border-l-2 border-gray-100 mt-1 mb-2 space-y-0">
+        <div className="mt-1 mb-2 space-y-0">
           {dayReadings.map((reading) => (
-            <div key={reading.id} className="relative flex items-start gap-3 py-1">
-              {/* Horizontal stub connecting to the vertical sub-line */}
-              <div className="absolute left-[-18px] top-[14px] w-3 h-0.5 bg-gray-200" />
+            <div key={reading.id} className="relative flex items-start gap-2 py-1 pl-10">
+              {/* Horizontal stub from main timeline line to tier-2 dot */}
+              <div className="absolute left-[10px] top-[14px] w-[30px] h-0.5 bg-gray-200" aria-hidden="true" />
               {/* Tier 2 dot */}
               <div className="relative flex-shrink-0 flex items-center justify-center w-5 pt-1.5">
                 <div
