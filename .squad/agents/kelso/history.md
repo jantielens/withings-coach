@@ -65,3 +65,35 @@
 
 **Orchestration log:** `.squad/orchestration-log/2026-04-06T18-17-kelso.md`
 
+## Visualization Clinical Utility Evaluation (2026-04-06 19:25)
+
+**Session:** Visualization Upgrade — Clinical Utility Evaluation  
+**Task:** Evaluate clinical utility of all proposed visualization options (connected dots, zone bands, sparklines, range bars, day summaries, trend arrows, vertical line charts, standalone averages)  
+**Outcome:** ✅ SUCCESS
+
+**Clinical Assessment:**
+
+**Approved visualization features:**
+1. **Connected dots + zone bands** — Essential for risk trajectory and instant zone awareness
+2. **Category distribution (stacked bar)** — Primary signal showing zone frequency; clinically superior to numeric averages
+3. **Range bars with reading count** — Variability indicator with statistical confidence pairing
+4. **Sparklines (3+ reading gate)** — Useful for intra-day trends when n ≥ 3 readings
+
+**Rejected visualization options (with clinical rationale):**
+- **Trend arrows (day-over-day deltas)** — False reassurance from noisy deltas; clinically harmful
+- **Vertical line charts (separate sys/dia)** — Reintroduces sys/dia ambiguity that ESC classification already solves
+- **Standalone daily averages** — Mask variability; replaced by category distribution + range
+
+**Key Clinical Principles:**
+- Worst-category coloring is a safety signal for multi-reading days (e.g., one Grade 2 + three Optimal should surface as concerning)
+- Category distribution > numeric averages (shows zone frequency, not masking it)
+- Range + count pairing mandatory (variability needs statistical confidence context)
+- Sparkline 3+ threshold enforces data sufficiency (below this, trends are noise)
+
+**Clinical Veto Power:** Elliot initially flagged trend arrows and vertical line charts as "trivial to build." Clinical expertise correctly identified them as misleading. Easy-to-build ≠ should-build.
+
+**Severity Ordering (for worst-category coloring):** Optimal (0) → Normal (1) → High Normal (2) → Grade 1 / ISH (3) → Grade 2 (4) → Grade 3 (5)
+
+**Orchestration log:** `.squad/orchestration-log/2026-04-06T19-25-kelso-visualization-clinical.md`  
+**Decision document:** Merged into `.squad/decisions.md` (Visualization Decisions section)
+

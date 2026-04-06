@@ -515,3 +515,204 @@ const categoryConfig = {
 - All meaningful changes require team consensus
 - Document architectural decisions here
 - Keep history focused on work, decisions focused on direction
+
+---
+
+### Visualization Decisions — Blood Pressure Display
+
+**From:** Team (Kelso, Elliot, Cox)  
+**Date:** 2026-04-06  
+**Context:** Design and implement 5 new visualization features for blood pressure timeline (connected dots, zone bands, day summaries, sparklines, range bars).
+
+---
+
+#### Decision 1: Connected Dot Timeline with Tiered Visualization
+
+**What:** Two-tier dot visualization:
+- **Tier 1:** Each day as a single dot colored by its worst (highest severity) ESC category
+- **Tier 2:** Expandable to show individual reading dots connected by lines
+
+**Why:**
+- Provides instant 4-week risk trajectory at a glance (clinical essential)
+- Worst-category coloring is a strong safety signal for multi-reading days
+- Expandable drill-down respects both summary view and detailed analysis needs
+
+**Clinical Rationale:** A day with one Grade 2 reading and three Optimal readings should surface as concerning. Severity ordering ensures this.
+
+**Severity Order:** Optimal (0) → Normal (1) → High Normal (2) → Grade 1 / ISH (3) → Grade 2 (4) → Grade 3 (5)
+
+**Implementation:** Pure Tailwind + inline SVG, no charting library
+
+**Status:** ✅ Implemented in `src/components/Timeline/Timeline.tsx` and `TimelineEntry.tsx`
+
+---
+
+#### Decision 2: ESC Color-Coded Zone Bands
+
+**What:** Background color bands on the timeline representing all 7 ESC blood pressure zones (Optimal → Grade 3 Hypertension).
+
+**Why:** Kelso's top clinical requirement — immediate visual risk stratification without reading numbers. Enables at-a-glance zone awareness.
+
+**Visual Design:** SVG `<rect>` elements, proportional to zone ranges (80–200 mmHg scale), semi-transparent background
+
+**Implementation:** Trivial SVG, no dependencies
+
+**Status:** ✅ Implemented in `src/components/Timeline/Timeline.tsx`
+
+---
+
+#### Decision 3: Day Summary Cards with Category Distribution, Range, and Count
+
+**What:** Expandable day cards showing three integrated components:
+- **Category Distribution:** Stacked bar showing frequency of each ESC category for that day
+- **Systolic/Diastolic Range:** Min-to-max spread across all readings
+- **Reading Count:** Total individual readings (confidence indicator)
+
+**Why:** Best summary combo per Kelso clinical assessment:
+- Category distribution is the primary signal — shows zone frequency, not averages
+- Range shows variability within the day
+- Count provides statistical confidence
+- Replaces numeric averages which mask the distribution that doctors care about
+
+**Key Principle:** Category distribution > numeric averages. Shows *where* readings landed (zone frequency) not just *what* they averaged to.
+
+**Implementation:** Pure Tailwind flex layouts, no dependencies
+
+**Status:** ✅ Implemented in:
+- `src/components/Timeline/DaySummary.tsx` (orchestrator)
+- `src/components/Timeline/CategoryDistribution.tsx` (stacked bar)
+- `src/components/Timeline/RangeBar.tsx` (range visualization)
+
+---
+
+#### Decision 4: Sparklines with 3+ Reading Clinical Gate
+
+**What:** Tiny inline SVG line charts showing intra-day BP trend, rendered only when a day has 3+ readings.
+
+**Why:**
+- Useful for showing measurement-to-measurement patterns within a day
+- Below 3 readings, a trend line is misleading — just 1-2 dots don't constitute a trend
+- Kelso flagged sub-3-reading sparklines as noise
+
+**Implementation:** Gate enforced in component (returns null if readings.length < 3); callers don't need to remember the rule.
+
+**Code:** ~30 lines inline SVG per component
+
+**Status:** ✅ Implemented in `src/components/Timeline/Sparkline.tsx`
+
+---
+
+#### Decision 5: Range Bars with Fixed Scale
+
+**What:** Vertical bars showing min-to-max systolic and diastolic spread for each day, using a fixed 80–200 mmHg scale.
+
+**Why:**
+- Good variability indicator
+- **Must always pair with reading count** (per Kelso — variability + statistical confidence go together)
+- Fixed scale ensures consistent visual comparison across days (auto-scaling would make "110-115" look identical to "160-175")
+
+**Implementation:** Pure Tailwind, no dependencies
+
+**Status:** ✅ Implemented in `src/components/Timeline/RangeBar.tsx`
+
+---
+
+#### Decision 6: Extended category-config.ts Instead of Separate Config Files
+
+**What:** Added `dotColor`, `zoneBg`, `barColor`, and `severity` fields to the existing `CategoryStyle` interface instead of creating separate configuration files.
+
+**Why:** Single source of truth for all category styling. Every component imports from one place — no risk of color drift between dot colors, zone bands, and bar segments.
+
+**Impact:** All existing consumers (LatestReading, SummaryCard, TimelineEntry) continue working unchanged since original `label` and `classes` fields are preserved.
+
+**Status:** ✅ Implemented in `src/config/category-config.ts`
+
+---
+
+#### Decision 7: DaySummary as Composite Orchestrator
+
+**What:** `DaySummary.tsx` composes `CategoryDistribution`, `Sparkline`, `RangeBar`, and `TimelineEntry` into a single expandable day card.
+
+**Why:**
+- Keeps each visualization feature as a standalone component (testable, reusable for doctor view)
+- DaySummary handles day-level data aggregation and expand/collapse logic
+- Separation of concerns: feature components are feature-agnostic, orchestrator handles UX coordination
+
+**Status:** ✅ Implemented in `src/components/Timeline/DaySummary.tsx`
+
+---
+
+#### Decision 8: ZoneLegend in Timeline Header (Not Separate in page.tsx)
+
+**What:** The ESC color legend is integrated directly into the Timeline component header, not placed separately in page.tsx.
+
+**Why:** The legend is contextually part of the timeline — it explains the dot colors and zone bands. Keeping it co-located with the visual it explains improves UX (no hunting for legend context).
+
+**Status:** ✅ Implemented in `src/components/Timeline/ZoneLegend.tsx` (called from Timeline header)
+
+---
+
+#### Items Rejected (with Clinical Rationale)
+
+| Item | Why Rejected |
+|---|---|
+| **Daily trend arrows** (day-over-day deltas) | Kelso: False reassurance from noisy deltas; clinically harmful |
+| **Vertical line charts (separate sys/dia)** | Kelso: Reintroduces sys/dia ambiguity that ESC classification solves |
+| **Numeric daily averages (standalone)** | Kelso: Masks variability; replaced by category distribution + range |
+
+**Note:** Elliot initially flagged these as trivial to build, but Kelso's clinical expertise correctly identified them as misleading. Easy-to-build ≠ should-build.
+
+---
+
+#### Tech Stack & Dependencies
+
+**Approach:** Pure Tailwind CSS + hand-rolled inline SVG
+
+**New Dependencies:** 0
+
+**Bundle Impact:** Minimal (~50KB component code, inline SVG)
+
+**Performance:** O(n) with n = readings/day (typically 3-6)
+
+**Why This Approach:**
+- Zero library churn; consistent with existing stack
+- All needed visualizations are simple enough for inline SVG + flex layouts
+- Charting libraries (D3, Chart.js, Recharts) add bundle weight, learning curve, and accessibility debt for features we won't use
+- This only works because our chart types are bounded; revisit if we need interactive zooming or complex annotations
+
+**Status:** ✅ No new dependencies added
+
+---
+
+#### Implementation Summary
+
+**Files Created:**
+- `src/components/Timeline/DaySummary.tsx`
+- `src/components/Timeline/Sparkline.tsx`
+- `src/components/Timeline/RangeBar.tsx`
+- `src/components/Timeline/CategoryDistribution.tsx`
+- `src/components/Timeline/ZoneLegend.tsx`
+
+**Files Modified:**
+- `src/components/Timeline/Timeline.tsx` (zone bands + legend header)
+- `src/components/Timeline/TimelineEntry.tsx` (worst-category coloring)
+- `src/app/page.tsx` (timeline integration)
+- `src/config/category-config.ts` (extended CategoryStyle)
+
+**Test Results:** ✅ 65 tests passing, zero failures, build clean
+
+**Status:** ✅ Complete and production-ready
+
+---
+
+#### Key Clinical Principles (for Future Reference)
+
+1. **Worst-category coloring is a safety signal** for multi-reading days
+2. **Category distribution > numeric averages** — shows zone frequency, not masking it
+3. **Range + count pairing is mandatory** — variability needs statistical confidence context
+4. **Sparkline 3+ threshold enforces data sufficiency** — below this, trends are noise
+
+These principles should carry forward to future metric summaries (HR zones, etc.).
+
+---
+

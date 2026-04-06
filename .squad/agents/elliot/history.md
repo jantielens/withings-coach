@@ -70,3 +70,97 @@
 
 Timeline component accepts optional date range filter for future coaching agent time slices and doctor view date ranges. No changes needed; feature is additive.
 
+### 2025-07-15 — 5 Visualization Features (Connected Dot Timeline + ESC Zones + Day Summaries + Sparklines + Range Bars)
+
+- **Connected dot timeline works**: Vertical `w-0.5 bg-gray-300` line with tier 1 (day) dots `w-4 h-4` colored by worst ESC category, tier 2 (individual reading) dots `w-2.5 h-2.5` indented with horizontal stubs. Expand/collapse preserved via `max-h` + `opacity` transitions.
+- **category-config.ts extended**: Added `dotColor`, `zoneBg`, `barColor`, and `severity` fields. Added `worstCategory()` helper and `zoneLegendCategories` ordered list. Existing `classes` and `label` fields unchanged — no breaking changes to LatestReading or SummaryCard.
+- **Pure SVG sparklines**: `<polyline>` approach with viewBox 0 0 100 40 works well. Two lines (systolic primary, diastolic lighter). Only renders for 3+ readings — important clinical gate from Kelso.
+- **RangeBar fixed scale**: 80–200 mmHg scale. `left` and `width` percentages calculated from min/max systolic values. Simple and effective.
+- **CategoryDistribution stacked bar**: Uses flex with percentage widths. Segments sorted by severity so colors read left-to-right from healthiest to worst.
+- **ZoneLegend is compact**: `flex-wrap` handles mobile nicely — wraps to 2 lines on small screens.
+- **DaySummary card combines everything**: Distribution bar + range bar on one row, range text + count on another row, sparkline in the header. Zone background via `config.zoneBg` keeps it subtle.
+- **Accessibility**: `aria-label` on all interactive elements (DaySummary, TimelineEntry), keyboard navigation with Enter/Space, `role="img"` on SVG elements.
+- **No new dependencies**: Zero npm installs. All pure Tailwind + inline SVG as planned.
+
+## Completed Work (2025-07-15 — Visualization Features)
+
+**Session:** 5 Visualization Features Build  
+**Task:** Connected Dot Timeline, ESC Zone Bands, Day Summary Cards, Sparklines, Range Bars  
+**Outcome:** ✅ SUCCESS — Build passes, all 65 tests pass
+
+**New Components Created:**
+- `src/components/Sparkline.tsx` — Inline SVG sparkline (systolic + diastolic polylines)
+- `src/components/RangeBar.tsx` — Horizontal range bar (80–200 mmHg fixed scale)
+- `src/components/CategoryDistribution.tsx` — Stacked mini-bar showing category percentages
+- `src/components/ZoneLegend.tsx` — Compact ESC zone color legend
+- `src/components/DaySummary.tsx` — Tier 1 day dot with summary card (all features combined)
+
+**Components Updated:**
+- `src/components/Timeline.tsx` — Connected dot timeline with vertical line + ZoneLegend
+- `src/components/TimelineEntry.tsx` — Now serves as tier 2 reading display with improved accessibility
+- `src/lib/ui/category-config.ts` — Extended with dotColor, zoneBg, barColor, severity, worstCategory(), zoneLegendCategories
+
+**Build & Tests:** ✅ TypeScript clean, 65 tests passing, zero new dependencies
+
+## Visualization Implementation (2026-04-06 19:25)
+
+**Session:** Visualization Upgrade — Implementation Phase  
+**Task:** Build 5 visualization features per Cox's prioritized plan  
+**Outcome:** ✅ SUCCESS
+
+**Features Delivered:**
+
+1. **Connected Dot Timeline (Tier 1 + 2 dots)**
+   - Each day as single dot colored by worst ESC category
+   - Expandable to show individual reading dots with connecting lines
+   - Clinical value: 4-week risk trajectory at a glance
+
+2. **ESC Color-Coded Zone Bands**
+   - Background bands on timeline for all ESC categories (Optimal → Grade 3)
+   - Visual risk stratification without reading numbers
+   - Implemented as SVG `<rect>` elements
+
+3. **Day Summary Cards**
+   - Category distribution (stacked bar showing zone frequency)
+   - Systolic/diastolic range with reading count
+   - Replaces numeric averages with zone frequency data
+
+4. **Sparklines**
+   - Inline SVG line charts for intra-day trends
+   - Rendered only when day has 3+ readings (Kelso clinical gate)
+   - ~30 lines per component
+
+5. **Range Bars**
+   - Vertical bars showing min-to-max spread per day
+   - Fixed 80–200 mmHg scale for consistent visual comparison
+   - Always paired with reading count
+
+**Files Created:**
+- `src/components/Timeline/DaySummary.tsx` — Composite orchestrator
+- `src/components/Timeline/Sparkline.tsx` — Sparkline with 3+ gate
+- `src/components/Timeline/RangeBar.tsx` — Fixed-scale range visualization
+- `src/components/Timeline/CategoryDistribution.tsx` — Stacked bar
+- `src/components/Timeline/ZoneLegend.tsx` — ESC color legend
+
+**Files Modified:**
+- `src/components/Timeline/Timeline.tsx` — Zone bands + legend
+- `src/components/Timeline/TimelineEntry.tsx` — Worst-category coloring
+- `src/app/page.tsx` — Integration point
+- `src/config/category-config.ts` — Extended CategoryStyle interface
+
+**Build & Tests:** ✅ TypeScript clean, 65 tests passing, zero new dependencies added
+
+**Key Implementation Decisions:**
+- Extended category-config.ts (single source of truth)
+- DaySummary as composite orchestrator (feature separation + UX coordination)
+- Sparkline 3+ gate enforced in component (clinical safety)
+- Worst-category coloring for multi-reading days (safety signal)
+- Fixed range bar scale 80–200 mmHg (visual consistency)
+- ZoneLegend in Timeline header (contextual co-location)
+
+**Tech Stack:** Pure Tailwind CSS + hand-rolled inline SVG, zero dependencies
+
+**Orchestration log:** `.squad/orchestration-log/2026-04-06T19-25-elliot-viz-implementation.md`  
+**Decision document:** Merged into `.squad/decisions.md` (Visualization Decisions section, Decisions 1–8)
+
+
