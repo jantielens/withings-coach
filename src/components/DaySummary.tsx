@@ -4,7 +4,6 @@ import { useState } from 'react';
 import type { ReadingGroup, BloodPressureData } from '@/lib/types/metrics';
 import { categoryConfig, worstCategory } from '@/lib/ui/category-config';
 import { CategoryDistribution } from './CategoryDistribution';
-import { Sparkline } from './Sparkline';
 import { RangeBar } from './RangeBar';
 import { TimelineEntry } from './TimelineEntry';
 
@@ -25,7 +24,7 @@ interface DaySummaryProps {
 
 /**
  * Tier 1 day summary dot with expandable tier 2 individual reading dots.
- * Shows: category distribution mini-bar, systolic/diastolic range, reading count, sparkline, range bar.
+ * Shows: category distribution mini-bar, systolic/diastolic range, reading count, range bar.
  */
 export function DaySummary({ dayReadings, isLast }: DaySummaryProps) {
   const [expanded, setExpanded] = useState(false);
@@ -95,7 +94,6 @@ export function DaySummary({ dayReadings, isLast }: DaySummaryProps) {
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <Sparkline readings={dayReadings} />
               <svg
                 className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
                 fill="none"
