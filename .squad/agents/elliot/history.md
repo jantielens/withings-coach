@@ -189,3 +189,12 @@ Timeline component accepts optional date range filter for future coaching agent 
 - **Margin-to-padding for timeline gaps**: Replaced `mt-1 mb-2` (margin) on expanded section with `pt-0 pb-3` (padding). Padding is inside the card container, so the dot column's `self-stretch` covers it — no timeline gaps.
 - **Tier-2 horizontal stubs**: Added `absolute left-0 top-1/2 -translate-y-1/2 w-3 h-0.5 bg-gray-300` stubs connecting each tier-2 dot to the left edge of the readings area. Dots get `relative z-10` so they layer above the stub.
 
+### 2025-07-16 — Condensed Timeline 5-Fix Refinement Batch
+
+- **Warning icon moved right**: Warning `!` icon was inline after day label, misaligning distribution bars. Moved it to after the dominant category badge (before chevron), keeping all bars vertically aligned across days.
+- **Removed "(n=X)" text — tick marks instead**: Replaced `(n={groupCount})` text with tick marks inside `CategoryDistribution`. Each segment now renders `flex` children with `border-r border-white/50` dividers between individual readings. Visually communicates count without text clutter.
+- **Combined SYS/DIA into single range bar**: Removed separate SYS and DIA rows with labels. Now one `h-1.5 bg-gray-100 rounded-full` track with sky-400 (diastolic) and rose-400 (systolic) ranges overlaid. Tick marks directly below (no spacer needed since labels removed). Much more compact.
+- **Removed duplicate summary in expanded section**: The old expanded card repeated distribution bar, range label, count label, and stats row — all already visible in the condensed header. Now expanded section only shows: range bar + tier-2 individual reading entries with dots.
+- **Tier-2 vertical timeline line fix**: Added `absolute left-[9px] top-0 bottom-0 w-0.5 bg-gray-300` continuous line through the tier-2 readings area, ensuring no gaps between entries. Horizontal stubs connect from this line to each reading dot.
+- **Dead code cleanup**: Removed `totalReadings`, `averagedCount`, `countLabel`, `rangeLabel` variables that were only used in the now-removed duplicate summary section.
+

@@ -9,10 +9,12 @@ interface CategoryDistributionProps {
 
 /**
  * Stacked horizontal mini-bar showing what percentage of readings
- * fell into each ESC category.
+ * fell into each ESC category, with tick marks between individual readings.
  */
 export function CategoryDistribution({ categories }: CategoryDistributionProps) {
   if (categories.length === 0) return null;
+
+  const total = categories.length;
 
   // Count occurrences of each category
   const counts = new Map<BPCategory, number>();
@@ -25,7 +27,8 @@ export function CategoryDistribution({ categories }: CategoryDistributionProps) 
     .sort((a, b) => categoryConfig[a[0]].severity - categoryConfig[b[0]].severity)
     .map(([cat, count]) => ({
       category: cat,
-      pct: (count / categories.length) * 100,
+      count,
+      pct: (count / total) * 100,
       config: categoryConfig[cat],
     }));
 
@@ -38,10 +41,18 @@ export function CategoryDistribution({ categories }: CategoryDistributionProps) 
       {segments.map((seg) => (
         <div
           key={seg.category}
-          className={`${seg.config.barColor} transition-all duration-200`}
+          className={`${seg.config.barColor} transition-all duration-200 flex`}
           style={{ width: `${seg.pct}%` }}
-          title={`${seg.config.label}: ${Math.round(seg.pct)}%`}
-        />
+          title={`${seg.config.label}: ${seg.count}`}
+        >
+          {/* Tick marks between individual readings within this segment */}
+          {Array.from({ length: seg.count }).map((_, i) => (
+            <div
+              key={i}
+              className={`flex-1${i < seg.count - 1 ? ' border-r border-white/50' : ''}`}
+            />
+          ))}
+        </div>
       ))}
     </div>
   );

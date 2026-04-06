@@ -27,8 +27,9 @@ interface DaySummaryProps {
 /**
  * Tier 1 day row — condensed single-line (default) or expanded full card.
  *
- * Condensed: ● Mon, Apr 6  [████░░░░]  Normal (n=10) ▼
- * Expanded: Same card grows to include detail below the condensed header.
+ * Condensed: ● Mon, Apr 6  [█|█|█░|░]  Normal  ⚠  ▼
+ * Tick marks in the bar indicate individual readings. Warning icon on the right for high-risk days.
+ * Expanded: Range bar + individual tier-2 readings (no duplicate summary).
  */
 export function DaySummary({ dayReadings, isFirst, isLast, expanded, onToggle }: DaySummaryProps) {
   const allCategories = dayReadings.map((r) => r.average.category);
@@ -46,21 +47,6 @@ export function DaySummary({ dayReadings, isFirst, isLast, expanded, onToggle }:
   const diaMax = Math.max(...diastolics);
 
   const groupCount = dayReadings.length;
-  const totalReadings = dayReadings.reduce((sum, g) => sum + g.readings.length, 0);
-  const averagedCount = dayReadings.filter((g) => g.isGrouped).length;
-
-  const countLabel =
-    totalReadings === 1
-      ? '1 reading'
-      : averagedCount > 0
-        ? `${totalReadings} readings (${averagedCount} averaged)`
-        : `${totalReadings} readings`;
-
-  const rangeLabel =
-    sysMin === sysMax
-      ? `${sysMin}/${diaMin} mmHg`
-      : `${sysMin}–${sysMax} / ${diaMin}–${diaMax} mmHg`;
-
   const lowConfidence = groupCount < 3;
   const dayLabel = formatDayShort(dayReadings[0].timestamp);
 
@@ -101,7 +87,7 @@ export function DaySummary({ dayReadings, isFirst, isLast, expanded, onToggle }:
           role="button"
           tabIndex={0}
           aria-expanded={expanded}
-          aria-label={`${dayLabel}: ${dominantConfig.label}, n=${groupCount}${isHighRisk ? ', high risk' : ''}${expanded ? ', expanded' : ''}`}
+          aria-label={`${dayLabel}: ${dominantConfig.label}, ${groupCount} readings${isHighRisk ? ', high risk' : ''}${expanded ? ', expanded' : ''}`}
           onKeyDown={handleKeyDown}
         >
           {/* Day label */}
@@ -109,7 +95,17 @@ export function DaySummary({ dayReadings, isFirst, isLast, expanded, onToggle }:
             {dayLabel}
           </span>
 
-          {/* Warning icon for high-risk days */}
+          {/* Category distribution bar (tick marks show individual readings) */}
+          <div className="flex-1 min-w-[60px] max-w-[140px]">
+            <CategoryDistribution categories={allCategories} />
+          </div>
+
+          {/* Dominant category text */}
+          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium flex-shrink-0 ${dominantConfig.classes}`}>
+            {dominantConfig.label}
+          </span>
+
+          {/* Warning icon for high-risk days — far right */}
           {isHighRisk && (
             <span
               className="flex-shrink-0 w-5 h-5 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xs font-bold"
@@ -120,58 +116,33 @@ export function DaySummary({ dayReadings, isFirst, isLast, expanded, onToggle }:
             </span>
           )}
 
-          {/* Category distribution bar */}
-          <div className="flex-1 min-w-[60px] max-w-[140px]">
-            <CategoryDistribution categories={allCategories} />
-          </div>
-
-          {/* Dominant category text */}
-          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium flex-shrink-0 ${dominantConfig.classes}`}>
-            {dominantConfig.label}
-          </span>
-
-          {/* Reading count */}
-          <span className="text-xs text-gray-500 tabular-nums flex-shrink-0">
-            (n={groupCount})
-          </span>
-
           {/* Expand/collapse chevron */}
           <span className="text-gray-400 text-sm flex-shrink-0 ml-auto" aria-hidden="true">
             {expanded ? '▲' : '▼'}
           </span>
         </div>
 
-        {/* Expanded detail — same card, no gap */}
+        {/* Expanded detail — individual readings + range bar only (no duplicate summary) */}
         <div
           className={`overflow-hidden transition-all duration-200 ease-in-out ${
             expanded ? 'max-h-[3000px] opacity-100' : 'max-h-0 opacity-0'
           }`}
         >
           <div className="px-3 pt-0 pb-3">
-            {/* Full summary card */}
-            <div className={`rounded-lg p-3 ${worstConfig.zoneBg}`}>
-              {/* Stats row */}
-              <div className="flex items-center gap-3 flex-wrap text-xs text-gray-600">
-                <span className="tabular-nums font-medium">{rangeLabel}</span>
-                <span className="text-gray-400">·</span>
-                <span>{countLabel}</span>
-              </div>
+            {/* Range bar */}
+            <div className="mb-2">
+              <RangeBar sysMin={sysMin} sysMax={sysMax} diaMin={diaMin} diaMax={diaMax} />
+            </div>
 
-              {/* Distribution bar + Range bar */}
-              <div className="flex items-center gap-3 mt-2">
-                <div className="flex-1 min-w-0">
-                  <CategoryDistribution categories={allCategories} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <RangeBar sysMin={sysMin} sysMax={sysMax} diaMin={diaMin} diaMax={diaMax} />
-                </div>
-              </div>
+            {/* Individual readings with tier-2 dot timeline */}
+            <div className="relative border-t border-gray-200/50 pt-2">
+              {/* Vertical timeline line through the tier-2 section */}
+              <div className="absolute left-[9px] top-0 bottom-0 w-0.5 bg-gray-300" aria-hidden="true" />
 
-              {/* Individual readings */}
-              <div className="mt-3 space-y-1 border-t border-gray-200/50 pt-2">
+              <div className="space-y-0">
                 {dayReadings.map((reading) => (
                   <div key={reading.id} className="relative flex items-center gap-2 py-1">
-                    {/* Horizontal stub from left edge to dot */}
+                    {/* Horizontal stub from timeline to dot */}
                     <div className="absolute left-0 top-1/2 -translate-y-1/2 w-3 h-0.5 bg-gray-300" aria-hidden="true" />
                     {/* Tier 2 dot */}
                     <div className="flex-shrink-0 flex items-center justify-center w-5 pl-2">
