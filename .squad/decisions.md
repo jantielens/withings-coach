@@ -2,6 +2,132 @@
 
 ## Active Decisions
 
+### Clinical Decisions — Blood Pressure
+
+**From:** Kelso (Medical Advisor)  
+**Date:** 2025-07-15  
+**Context:** Cox's 5 clinical questions on blood pressure classification, thresholds, display, disclaimers, and summary statistics. All resolved.
+
+---
+
+#### Decision 1: Use 2017 ACC/AHA BP Classification Thresholds
+
+**What:** Adopt the **2017 American College of Cardiology / American Heart Association Blood Pressure Classification** for all home BP readings.
+
+**Thresholds:**
+
+| Category | Systolic | Diastolic | When to Assign |
+|----------|----------|-----------|-----------------|
+| **Normal** | <120 mmHg | AND <80 mmHg | Both below thresholds |
+| **Elevated** | 120–129 mmHg | AND <80 mmHg | Systolic borderline, diastolic normal |
+| **High BP Stage 1** | 130–139 mmHg | OR 80–89 mmHg | Either component in stage 1 range |
+| **High BP Stage 2** | ≥140 mmHg | OR ≥90 mmHg | Either component in stage 2 range |
+| **Hypertensive Crisis** | >180 mmHg | OR >120 mmHg | Emergency level (rare in home settings) |
+
+**Enum values:**
+```typescript
+enum BPCategory {
+  NORMAL = 'normal',
+  ELEVATED = 'elevated',
+  HIGH_STAGE_1 = 'high_stage_1',
+  HIGH_STAGE_2 = 'high_stage_2',
+  CRISIS = 'crisis',
+}
+```
+
+**Why:** Current U.S. clinical standard (ACC, AHA, AMA). All home BP monitors use them. Physicians expect them. Clinically appropriate for all patient populations.
+
+**Scope:** MVE, LLM coaching agent, doctor view.
+
+**Status:** ✅ **Binding** — implement in `lib/classification/blood-pressure.ts`
+
+---
+
+#### Decision 2: Category Assignment Uses the Higher of Systolic/Diastolic
+
+**What:** When systolic and diastolic fall into different categories, assign the **higher severity category**.
+
+**Algorithm:**
+```typescript
+const systolicCategory = getCategory(reading.systolic);
+const diastolicCategory = getCategory(reading.diastolic);
+reading.category = max(systolicCategory, diastolicCategory);
+```
+
+**Example:**
+- Reading: 128/82
+- Systolic 128 → Elevated
+- Diastolic 82 → Stage 1
+- **Assigned category:** Stage 1 (higher severity)
+
+**Why:** Both components matter. When they disagree, classify at the worse level. Prevents underestimating risk.
+
+**Status:** ✅ **Binding** — implement in classification logic.
+
+---
+
+#### Decision 3: Pulse Display Strategy
+
+**What:** 
+- Always show pulse alongside BP readings (smaller font, below systolic/diastolic)
+- No automatic pulse-based alerts in the MVP
+- Future phases (coaching agent, doctor view) can add pulse interpretation
+
+**MVP Display:**
+- Latest reading card: Show pulse beneath BP numbers (e.g., "72 bpm")
+- Timeline entries: Include pulse in list view
+
+**Why:** Pulse is important clinical context. But standalone pulse interpretation in home settings is unreliable — resting HR varies by fitness, time of day, stress, caffeine. Show the data; let future features interpret smartly.
+
+**Status:** ✅ **Binding** — always include pulse in readings and timeline; no MVP warnings.
+
+---
+
+#### Decision 4: Medical Disclaimer for Timeline View
+
+**What:** Single, visible disclaimer at the **bottom of timeline view**:
+
+**Recommended text:**
+```
+⚠️ This data is for informational purposes only. Blood pressure varies 
+throughout the day and is influenced by stress, activity, and posture. 
+Consult your physician to interpret these readings and adjust any health decisions.
+```
+
+**Placement:** 
+- Footer of scrollable timeline
+- Small text (10–12pt), gray color, visible on all devices
+- Not repeated on individual readings
+
+**Why:** Home BP readings are inherently variable. One clear disclaimer handles legal responsibility and sets patient expectations without inducing unnecessary anxiety.
+
+**Status:** ✅ **Binding** — implement in timeline footer.
+
+---
+
+#### Decision 5: 7-Day Summary Should Show Average + Median + Range + Count
+
+**What:** Summary card displays:
+
+**Format:**
+```
+Systolic:   Avg 128  |  Median 126  |  Range 118–142 mmHg
+Diastolic:  Avg 82   |  Median 81   |  Range 75–89 mmHg
+Readings:   12 measurements over 7 days
+```
+
+**Rationale:**
+- **Average:** Familiar, useful for trend
+- **Median:** Robust to outliers
+- **Range (min–max):** Shows variability, highlights anomalies
+- **Count:** Critical context — average of 3 is less reliable than average of 15
+
+**Why:** Average alone is misleading. Median + range + count tell the clinical story.
+
+**Status:** ✅ **Binding** — implement in `MetricSummary` for blood pressure.
+
+---
+
 ### Architecture Decisions — MVE
 
 **From:** Cox (Lead/Architect)  

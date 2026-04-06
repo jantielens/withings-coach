@@ -8,6 +8,13 @@
 - **Purpose:** Integrate with Withings API to pull health data (blood pressure, heart rate, ECG) and serve it to three consumers: web timeline, LLM agent, doctor view
 - **Key concern:** Reliable Withings OAuth flow, data normalization, and efficient API design for multiple consumers
 
+## Clinical Input from Kelso
+
+**Blood Pressure Classification (2026-04-06):**
+- BP classification uses **higher-of-two-categories** rule: when systolic and diastolic fall into different severity levels, assign the higher one
+- Example: Reading 128/82 → Systolic=Elevated, Diastolic=Stage 1 → **Assigned: Stage 1**
+- This rule prevents underestimating cardiovascular risk; implement in service layer classification logic
+
 ## Learnings
 
 _No learnings yet — project just started._

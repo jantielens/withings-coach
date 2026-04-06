@@ -11,7 +11,23 @@
 
 ## Learnings
 
-_No learnings yet — project just started._
+### BP Classification & Clinical Thresholds (2025-07-15)
+
+**Five clinical decisions made for Cox's MVE questions:**
+
+1. **Classification Standard:** Use 2017 ACC/AHA Blood Pressure Classification (Normal <120/<80, Elevated 120–129/<80, Stage 1 130–139/80–89, Stage 2 ≥140/≥90, Crisis >180/>120). This is the current U.S. standard used by all home monitors and clinical settings.
+
+2. **Category Assignment Rule:** When systolic and diastolic fall into different categories, assign the **higher severity category**. This prevents underestimating risk when one component is elevated.
+
+3. **Pulse Display:** Always show pulse alongside BP (smaller font). No MVP alerts — pulse interpretation requires clinical history. Future coaching agent can layer on smart pulse analysis.
+
+4. **Disclaimers:** Single footer disclaimer on the timeline: "This data is for informational purposes only. Blood pressure varies throughout the day and is influenced by stress, activity, and posture. Consult your physician to interpret these readings and adjust any health decisions." Not on every card (that's noise).
+
+5. **Summary Statistics:** Show Avg + Median + Range + Count for 7-day summary. Median protects against outliers; range shows variability; count indicates data reliability. Average alone is clinically misleading.
+
+**Key insight:** Home BP readings are noisy and context-dependent. Every number needs clinical guardrails. Data without context breeds anxiety; data with context informs decision-making.
+
+**Dependency:** All engineering implementation (Cox, Elliot, Carla) can proceed — thresholds are locked in, no ambiguity.
 
 ## Open Questions for Kelso
 
