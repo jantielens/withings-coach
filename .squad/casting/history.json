@@ -1,0 +1,16 @@
+[
+  {
+    "assignment_id": "scrubs-2026-04-06",
+    "universe": "Scrubs",
+    "created_at": "2026-04-06T17:01:54Z",
+    "agents": [
+      { "name": "Cox", "role": "Lead" },
+      { "name": "Elliot", "role": "Frontend Dev" },
+      { "name": "Turk", "role": "Backend Dev" },
+      { "name": "JD", "role": "AI Engineer" },
+      { "name": "Carla", "role": "Tester" },
+      { "name": "Kelso", "role": "Medical Advisor" }
+    ],
+    "remaining_capacity": 6
+  }
+]
