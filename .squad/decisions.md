@@ -5,68 +5,119 @@
 ### Clinical Decisions — Blood Pressure
 
 **From:** Kelso (Medical Advisor)  
-**Date:** 2025-07-15  
-**Context:** Cox's 5 clinical questions on blood pressure classification, thresholds, display, disclaimers, and summary statistics. All resolved.
+**Date:** 2026-04-06  
+**Context:** Switch from ACC/AHA 2017 (U.S.) to ESC/ESH 2018 (European) hypertension classification; implement multi-reading detection and averaging.
 
 ---
 
-#### Decision 1: Use 2017 ACC/AHA BP Classification Thresholds
+#### Decision 1: Use ESC/ESH 2018 BP Classification Thresholds (Supersedes ACC/AHA 2017)
 
-**What:** Adopt the **2017 American College of Cardiology / American Heart Association Blood Pressure Classification** for all home BP readings.
+**What:** Adopt the **2018 ESC/ESH Hypertension Guidelines** for all home BP readings. Replaces previous ACC/AHA 2017 classification.
 
-**Thresholds:**
+**The 7 ESC/ESH 2018 Categories:**
 
-| Category | Systolic | Diastolic | When to Assign |
-|----------|----------|-----------|-----------------|
-| **Normal** | <120 mmHg | AND <80 mmHg | Both below thresholds |
-| **Elevated** | 120–129 mmHg | AND <80 mmHg | Systolic borderline, diastolic normal |
-| **High BP Stage 1** | 130–139 mmHg | OR 80–89 mmHg | Either component in stage 1 range |
-| **High BP Stage 2** | ≥140 mmHg | OR ≥90 mmHg | Either component in stage 2 range |
-| **Hypertensive Crisis** | >180 mmHg | OR >120 mmHg | Emergency level (rare in home settings) |
+| Category | Systolic | AND | Diastolic | Clinical Guidance |
+|----------|----------|-----|-----------|-------------------|
+| **Optimal** | <120 mmHg | AND | <80 mmHg | Ideal; cardiovascular lowest risk |
+| **Normal** | 120–129 mmHg | AND | <80 mmHg | Excellent; still considered normal |
+| **High Normal** | 130–139 mmHg | AND/OR | 80–89 mmHg | Borderline; monitor closely |
+| **Grade 1 Hypertension** | 140–159 mmHg | AND/OR | 90–99 mmHg | Mild HTN; lifestyle + pharmacological therapy |
+| **Grade 2 Hypertension** | 160–179 mmHg | AND/OR | 100–109 mmHg | Moderate HTN; immediate pharmacological therapy |
+| **Grade 3 Hypertension** | ≥180 mmHg | AND/OR | ≥110 mmHg | Severe HTN; urgent evaluation required |
+| **Isolated Systolic Hypertension** | ≥140 mmHg | AND | <90 mmHg | Systolic elevated, diastolic normal; treat as HTN |
 
 **Enum values:**
 ```typescript
 enum BPCategory {
+  OPTIMAL = 'optimal',
   NORMAL = 'normal',
-  ELEVATED = 'elevated',
-  HIGH_STAGE_1 = 'high_stage_1',
-  HIGH_STAGE_2 = 'high_stage_2',
-  CRISIS = 'crisis',
+  HIGH_NORMAL = 'high_normal',
+  GRADE_1 = 'grade_1',
+  GRADE_2 = 'grade_2',
+  GRADE_3 = 'grade_3',
+  ISOLATED_SYSTOLIC = 'isolated_systolic',
 }
 ```
 
-**Why:** Current U.S. clinical standard (ACC, AHA, AMA). All home BP monitors use them. Physicians expect them. Clinically appropriate for all patient populations.
+**Category Assignment Rule:**
+- When systolic and diastolic fall into *different* categories, assign the **higher severity category**
+- **Isolated Systolic HTN check is performed first:** If systolic ≥140 AND diastolic <90, classify as ISH regardless of systolic severity
+- ISH is a distinct clinical entity per ESC/ESH guidelines
+
+**Why:** 
+- European clinical standard (ESC/ESH, WHO)
+- All modern guidelines converge on similar thresholds
+- More nuanced (7 vs. 5 categories) for better risk stratification
+- Explicit "Optimal vs. Normal" distinction
+- ISH recognition as distinct pattern
 
 **Scope:** MVE, LLM coaching agent, doctor view.
 
-**Status:** ✅ **Binding** — implement in `lib/classification/blood-pressure.ts`
+**Status:** ✅ **Binding** — Implemented in `src/lib/classification/blood-pressure.ts`
 
 ---
 
-#### Decision 2: Category Assignment Uses the Higher of Systolic/Diastolic
+#### Decision 2: Multi-Reading Averaging — Clinical Validity & Implementation
 
-**What:** When systolic and diastolic fall into different categories, assign the **higher severity category**.
+**What:** Blood pressure readings taken within 10 minutes of each other are grouped together, averaged, and classified as a single reading group.
 
-**Algorithm:**
+**Clinical Validation:**
+- **Is averaging 3 readings within 10 minutes clinically valid?** YES — Gold standard in clinical practice per ESC/ESH 2018 guidelines
+- The ESC/ESH 2018 guidelines explicitly recommend: Take at least 2 readings, preferably 3, in the same session (1–2 minutes apart)
+- Standard practice because:
+  1. Reduces white-coat effect (first reading often artificially elevated)
+  2. Captures typical BP, averages out transient fluctuations
+  3. Matches home monitor conventions (designed for repeated same-session readings)
+
+**Averaging Algorithm:**
+- Method: **Mean of all N readings** (SUM ÷ N)
+  - Systolic: (sys1 + sys2 + sys3) ÷ 3 → round to nearest integer
+  - Diastolic: (dia1 + dia2 + dia3) ÷ 3 → round to nearest integer
+  - Pulse: (pulse1 + pulse2 + pulse3) ÷ 3 → round to nearest integer
+- **Grouping window:** Consecutive readings ≤10 minutes apart form one group
+- **Classification:** Applied to the AVERAGED reading only, not individual readings
+- **Rationale:** Clinically sound; matches clinical trial methodology. Avoids confusion (e.g., 3 different categories from one session)
+
+**Data Model:**
 ```typescript
-const systolicCategory = getCategory(reading.systolic);
-const diastolicCategory = getCategory(reading.diastolic);
-reading.category = max(systolicCategory, diastolicCategory);
+interface ReadingGroup<T> {
+  id: string;
+  readings: HealthMetric<T>[];  // individual readings
+  average: T;                    // computed average
+  timestamp: string;             // first reading's timestamp
+  isGrouped: boolean;            // true if >1 reading in group
+}
 ```
 
-**Example:**
-- Reading: 128/82
-- Systolic 128 → Elevated
-- Diastolic 82 → Stage 1
-- **Assigned category:** Stage 1 (higher severity)
+**Summary Stats:**
+- `MetricSummary.count` = total individual readings
+- `MetricSummary.groupCount` = number of groups (prevents triple-counting in 7-day summary)
+- Summary calculations use group averages, not individual readings
+
+**Display Labels:**
+- Primary: "Average of 3 readings taken 2025-07-16 at 08:15"
+- Compact: "Average (3 readings)"
+- Timeline: "08:15 — Average 142/88 (3 readings) — Grade 1 HTN"
+- Expandable: Click badge to show individual readings with time offsets (+0s, +62s, +124s)
+
+**Status:** ✅ **Binding** — Implemented. API contract changed to ReadingGroup<T>[]. All consumers updated.
+
+---
+
+#### Decision 3: Category Assignment Uses the Higher of Systolic/Diastolic
+
+**Algorithm:**
+- Systolic and diastolic may fall into different ESC/ESH categories
+- **Assign the higher severity category** when they differ
+- Example: 155/102 (Grade 1 systolic, Grade 2 diastolic) → **Grade 2**
 
 **Why:** Both components matter. When they disagree, classify at the worse level. Prevents underestimating risk.
 
-**Status:** ✅ **Binding** — implement in classification logic.
+**Status:** ✅ **Binding** — Core principle of ESC/ESH classification
 
 ---
 
-#### Decision 3: Pulse Display Strategy
+#### Decision 4: Pulse Display Strategy
 
 **What:** 
 - Always show pulse alongside BP readings (smaller font, below systolic/diastolic)
@@ -76,6 +127,7 @@ reading.category = max(systolicCategory, diastolicCategory);
 **MVP Display:**
 - Latest reading card: Show pulse beneath BP numbers (e.g., "72 bpm")
 - Timeline entries: Include pulse in list view
+- Multi-reading groups: Average pulse shown with individual pulse values on expansion
 
 **Why:** Pulse is important clinical context. But standalone pulse interpretation in home settings is unreliable — resting HR varies by fitness, time of day, stress, caffeine. Show the data; let future features interpret smartly.
 
@@ -83,7 +135,7 @@ reading.category = max(systolicCategory, diastolicCategory);
 
 ---
 
-#### Decision 4: Medical Disclaimer for Timeline View
+#### Decision 5: Medical Disclaimer for Timeline View
 
 **What:** Single, visible disclaimer at the **bottom of timeline view**:
 
@@ -105,7 +157,7 @@ Consult your physician to interpret these readings and adjust any health decisio
 
 ---
 
-#### Decision 5: 7-Day Summary Should Show Average + Median + Range + Count
+#### Decision 6: 7-Day Summary Should Show Average + Median + Range + Group Count
 
 **What:** Summary card displays:
 
@@ -113,18 +165,19 @@ Consult your physician to interpret these readings and adjust any health decisio
 ```
 Systolic:   Avg 128  |  Median 126  |  Range 118–142 mmHg
 Diastolic:  Avg 82   |  Median 81   |  Range 75–89 mmHg
-Readings:   12 measurements over 7 days
+Reading Groups: 5 sessions | 12 total readings over 7 days
 ```
 
 **Rationale:**
 - **Average:** Familiar, useful for trend
 - **Median:** Robust to outliers
 - **Range (min–max):** Shows variability, highlights anomalies
-- **Count:** Critical context — average of 3 is less reliable than average of 15
+- **Group Count:** Critical context — matches user mental model (5 sessions, not 15 readings)
+- **Individual reading count:** Transparency on how many measurements went into the average
 
-**Why:** Average alone is misleading. Median + range + count tell the clinical story.
+**Why:** Average alone is misleading. With multi-reading grouping, group count (sessions) is more meaningful than total reading count (which can inflate due to averaging).
 
-**Status:** ✅ **Binding** — implement in `MetricSummary` for blood pressure.
+**Status:** ✅ **Binding** — Implemented in `MetricSummary` with `groupCount` field
 
 ---
 
@@ -303,6 +356,157 @@ Readings:   12 measurements over 7 days
 **Priority:** Low (MVE safe — Withings API won't send zeroes) → Medium (before Phase 2 coaching agent)
 
 **Status:** 📋 Proposed for Phase 2. **Assigned to:** Turk (implementation), Kelso (clinical lower bounds validation)
+
+---
+
+### Frontend UI Decisions — ESC/ESH & Multi-Reading Display
+
+**From:** Elliot (Frontend Developer)  
+**Date:** 2026-04-06  
+**Context:** ESC/ESH 2018 classification migration + ReadingGroup UI support
+
+---
+
+#### Decision 1: Shared Category Config Utility
+
+**What:** Extracted `categoryConfig` (label + Tailwind color classes) from individual components into `src/lib/ui/category-config.ts`. Both UI components now import from the shared module.
+
+**Why:** Category config was duplicated in two components. With 7 categories (up from 5), keeping them in sync would be error-prone. Any new component that needs BP category badges just imports the config.
+
+**Implementation:** `categoryConfig` object maps BPCategory enum to display label and Tailwind classes:
+```typescript
+const categoryConfig = {
+  OPTIMAL: { label: 'Optimal', classes: 'bg-green-100 text-green-800' },
+  NORMAL: { label: 'Normal', classes: 'bg-green-50 text-green-700' },
+  HIGH_NORMAL: { label: 'High Normal', classes: 'bg-yellow-100 text-yellow-800' },
+  // ... etc.
+}
+```
+
+**Status:** ✅ Implemented in `src/lib/ui/category-config.ts`
+
+---
+
+#### Decision 2: ESC/ESH 2018 Category Badge Colors
+
+**What:** Updated all category badges to match ESC/ESH 2018 classification:
+
+| Category | Tailwind Classes | Rationale |
+|----------|-----------------|-----------|
+| Optimal | `bg-green-100 text-green-800` | Ideal; cardiovascular lowest risk |
+| Normal | `bg-green-50 text-green-700` | Excellent; still normal |
+| High Normal | `bg-yellow-100 text-yellow-800` | Borderline; monitor closely |
+| Grade 1 | `bg-orange-100 text-orange-800` | Mild hypertension |
+| Grade 2 | `bg-red-100 text-red-800` | Moderate hypertension |
+| Grade 3 | `bg-red-200 text-red-900` | Severe hypertension |
+| Isolated Systolic | `bg-purple-100 text-purple-800` | Distinct clinical pattern |
+
+**Why:** 
+- Backend switched from AHA to ESC/ESH classification
+- Colors progress from green → yellow → orange → red with increasing severity
+- Purple for Isolated Systolic distinguishes it as a distinct clinical entity
+- Consistent with modern blood pressure monitoring apps
+
+**Status:** ✅ Implemented
+
+---
+
+#### Decision 3: Expand/Collapse Pattern for Grouped Readings
+
+**What:** When `isGrouped: true`, grouped readings show:
+- A small `×N` badge (blue, clickable) in TimelineEntry (e.g., "×3" for 3 readings)
+- A "Show individual readings" link in LatestReading
+- On click, expands to show individual readings with time offsets (+0s, +62s, +124s)
+- Uses Tailwind `max-h` + `opacity` transitions for smooth animation
+
+**Why:** Users taking 3 readings in a row (common with Withings devices) need to see the individual readings that make up an average, but shouldn't be cluttered by them by default.
+
+**Trade-off:** Used CSS max-h transitions instead of a library like framer-motion. Slightly less smooth for variable-height content, but zero added dependencies.
+
+**UX Details:**
+- Timeline shows only average by default (clean, scannable)
+- Click ×N badge to expand inline
+- LatestReading shows average prominently; "Show readings" link below
+- Individual readings labeled with offsets: "Reading 1 (+0s), Reading 2 (+62s), Reading 3 (+124s)"
+
+**Status:** ✅ Implemented
+
+---
+
+#### Decision 4: ReadingGroup as Primary Data Shape
+
+**What:** All frontend components now consume `ReadingGroup<T>[]` instead of `HealthMetric<T>[]`:
+- `useHealthData` hook
+- `Timeline`, `TimelineEntry` components
+- `LatestReading`, `SummaryCard` components
+- `page.tsx`
+
+**API contract:** MetricsResponse updated to return `ReadingGroup<T>[]` instead of `HealthMetric<T>[]`
+
+**Why:** The API groups consecutive readings taken within 10 minutes into averaged groups. Single readings are wrapped as `ReadingGroup` with `isGrouped: false` — so the UI handles both cases uniformly. Eliminates conditional logic throughout the UI.
+
+**Impact:** Breaking change to all component props. All tests updated to reflect new data shape.
+
+**Status:** ✅ Implemented
+
+---
+
+#### Decision 5: SummaryCard Shows Group Count
+
+**What:** SummaryCard now displays:
+- **Primary metric:** `groupCount` (number of reading groups/sessions)
+- **Subtitle:** How many groups are averaged (e.g., "5 sessions, 12 readings")
+
+**Why:** Displaying total individual readings (e.g., 15) when the user took 5 sessions (some with 3 readings each) is misleading. Group count (5) matches the user's mental model ("I took readings 5 times this week").
+
+**Calculation (in page.tsx):**
+- Count total groups in data
+- Count total individual readings across all groups
+- Compute average readings per group
+- Pass to SummaryCard for display
+
+**Status:** ✅ Implemented
+
+---
+
+### Implementation Summary — ESC/ESH & Multi-Reading
+
+**From:** Engineering Team  
+**Date:** 2026-04-06  
+**Scope:** Full implementation of ESC/ESH 2018 classification + multi-reading grouping + expandable UI
+
+---
+
+#### Files Changed (Backend)
+
+| File | Change | Impact |
+|------|--------|--------|
+| `src/lib/types/metrics.ts` | Added ReadingGroup<T>, updated BPCategory enum (7 categories), added groupCount | Type system update |
+| `src/lib/classification/blood-pressure.ts` | Replaced AHA thresholds with ESC/ESH 2018, added ISH logic | Classification logic |
+| `src/lib/services/health-data-service.ts` | Added grouping algorithm (10-min window), averaging logic, classification on grouped readings | Core service logic |
+| `src/app/api/health/metrics/route.ts` | Updated response to return ReadingGroup[] instead of HealthMetric[] | API contract change (breaking) |
+
+#### Files Changed (Frontend)
+
+| File | Change | Impact |
+|------|--------|--------|
+| `src/lib/ui/category-config.ts` | New shared category config (7 ESC categories + colors) | Shared component resource |
+| `src/components/LatestReading.tsx` | ReadingGroup support, "Show readings" expand/collapse | UI update |
+| `src/components/TimelineEntry.tsx` | ReadingGroup support, ×N badge, expand/collapse | UI update |
+| `src/components/SummaryCard.tsx` | Group count display with averaged readings subtitle | Summary metric update |
+| `src/components/Timeline.tsx` | ReadingGroup data shape integration | Component data layer |
+| `src/hooks/useHealthData.ts` | ReadingGroup response parsing | Hook update |
+| `src/app/page.tsx` | averagedGroupCount computation for display | Page logic |
+
+#### Test Coverage
+
+- `src/__tests__/blood-pressure.test.ts` — ESC/ESH thresholds (7 categories + boundaries)
+- `src/__tests__/health-data-service.test.ts` — Grouping + averaging logic
+- `src/__tests__/latest-reading.test.tsx` — Expand/collapse UI
+- `src/__tests__/timeline-entry.test.tsx` — ×N badge display
+- `src/__tests__/summary-card.test.tsx` — Group count computation
+
+**Result:** ✅ 65 tests passing, `tsc --noEmit` clean
 
 ---
 

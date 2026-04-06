@@ -29,13 +29,39 @@
 
 **Dependency:** All engineering implementation (Cox, Elliot, Carla) can proceed — thresholds are locked in, no ambiguity.
 
-## Open Questions for Kelso
+## ESC/ESH 2018 Classification & Multi-Reading Averaging (2026-04-06 18:17)
 
-- Cox has 5 clinical questions about blood pressure classification:
-  - What are the AHA clinical guidelines for BP classification (Normal, Elevated, Stage 1, Stage 2, Hypertensive Crisis)?
-  - What are the exact systolic/diastolic thresholds for each category?
-  - How should we display these categories safely to users without inducing unnecessary health anxiety?
-  - Should we distinguish between home BP readings and clinical readings in our classification?
-  - What disclaimers or clinical guidance should accompany BP data in the UI?
-  - **Dependency:** Cox is deferring clinical classification implementation (Decision 6) pending Kelso's confirmation of thresholds
+**Four binding decisions on switching from ACC/AHA to ESC/ESH 2018:**
+
+1. **ESC/ESH 2018 Thresholds:** Seven categories (Optimal <120/<80, Normal 120–129/<80, High Normal 130–139/80–89, Grade 1 140–159/90–99, Grade 2 160–179/100–109, Grade 3 ≥180/≥110, Isolated Systolic ≥140/<90). Higher severity category wins when systolic and diastolic disagree.
+
+2. **Multi-Reading Averaging:** YES, clinically valid. ESC/ESH recommends 2–3 readings, 1–2 minutes apart. Use **mean of all 3 readings** (gold standard), round to nearest integer. Drop-first-take-last-2 is outdated.
+
+3. **Display Label:** "Average of 3 readings" on the card. Shows timestamp and count (e.g., "08:15 — Average 138/86 (3 readings) — High Normal"). Transparent; avoids jargon.
+
+4. **Classification Target:** Apply ESC category to the **averaged reading only**, not each individual. Prevents confusion (one session, one category). Individual readings available as expandable detail in timeline.
+
+**Clinical rationale:** Averaging reduces white-coat effect, captures typical BP, matches home monitor design and clinical trial methodology. ESC guidelines are current, evidence-based, and align with European standard of care.
+
+**Key difference from ACC/AHA:** No "Elevated" category; "Optimal" and "Normal" are separate; grade numbering matches international guidelines.
+
+**Implementation Status:** ✅ COMPLETE
+- Decision document written: `.squad/decisions/inbox/kelso-esc-classification.md`
+- Provided comprehensive thresholds, examples, implementation checklist
+- Approved by Turk and Elliot for full backend/frontend implementation
+- All thresholds locked, no ambiguity for engineering team
+
+## Completed Work (2026-04-06)
+
+**Session:** ESC/ESH 2018 Classification + Multi-Reading Grouping  
+**Task:** Validate ESC/ESH 2018 thresholds + multi-reading averaging  
+**Outcome:** ✅ SUCCESS
+
+**Deliverables:**
+- Comprehensive decision document with all 7 ESC categories and clinical guidance
+- Validated multi-reading averaging protocol (mean of 3, 10-min window)
+- Approved display labels and timeline guidance
+- Binding decisions on classification scope (averaged reading only)
+
+**Orchestration log:** `.squad/orchestration-log/2026-04-06T18-17-kelso.md`
 

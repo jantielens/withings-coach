@@ -22,19 +22,49 @@
 
 ## Learnings
 
-### 2025-07-15 — MVE Frontend Build
+### 2025-07-15 — ESC/ESH 2018 + ReadingGroup UI
 
-- **Tailwind v4 + Next.js 16**: Project uses `@import "tailwindcss"` CSS-based config, not JS config files. Tailwind v4 classes work out of the box. No `tailwind.config.ts` needed.
-- **Types alignment**: Turk's `MetricSummary.stats` includes `median` alongside `avg/min/max` — matched that in the SummaryCard (shows median below average). `timestamp` is `string` (ISO 8601), not `Date`.
-- **Component structure**: Extracted `categoryConfig` (label + Tailwind classes) as a shared pattern in both `LatestReading` and `TimelineEntry`. If we add more components using BP categories, consider pulling this into a shared util.
-- **Parallel workflow**: Turk created `src/` and `src/lib/types/metrics.ts` while I waited. Had to poll ~2 minutes for the directory to appear. Future tasks: coordinate on a branch or use a shared signal.
-- **Build clean**: All 6 frontend files (hook, 4 components, page) compile with zero TypeScript errors against Turk's types on first attempt.
+- **Category config extracted to shared util**: Moved `categoryConfig` from being duplicated in LatestReading and TimelineEntry into `src/lib/ui/category-config.ts`. Both components now import from there. Future components should do the same.
+- **ESC/ESH 2018 categories**: Replaced AHA 5-category system (Normal/Elevated/Stage 1/Stage 2/Crisis) with ESC/ESH 7-category system (Optimal/Normal/High Normal/Grade 1/Grade 2/Grade 3/Isolated Systolic). Enum values, labels, and Tailwind color classes all updated.
+- **ReadingGroup pattern**: API now returns `ReadingGroup<T>[]` instead of `HealthMetric<T>[]`. Each group has `readings` (individual), `average` (computed), `isGrouped` (boolean), and `timestamp`. All components updated to consume this shape.
+- **Expand/collapse UI**: Used Tailwind `max-h` + `opacity` transitions for smooth expand/collapse. No animation library needed. `overflow-hidden` + `transition-all duration-300` handles it cleanly.
+- **Turk's service already had ReadingGroup**: When I started this task, `health-data-service.ts` already had `groupReadings()` and `buildReadingGroup()` with the `ReadingGroup` type and `groupCount` on `MetricSummary`. Types aligned on first build — zero drift.
+- **Test updates**: All 65 tests updated and passing. Classification tests rewritten for ESC/ESH thresholds. Mock data in hook/API/service tests updated to use `ReadingGroup` shape.
 
 ## Cross-Team Collaboration (2026-04-06 MVE Build)
 
 **Turk (Backend):** All types matched exactly on first build. Your `MetricSummary` structure with `median` in stats is correct. Components render cleanly with zero TypeScript drift.
 
 **Carla (Tester):** 72 tests passing against your components. No rendering issues found in jsdom environment. One data quality flag in classification (zero/negative values) — defer to Phase 2.
+
+## Completed Work (2026-04-06 18:17)
+
+**Session:** ESC/ESH 2018 Classification + Multi-Reading Grouping  
+**Task:** Expandable combined reading UI + ESC category badges  
+**Outcome:** ✅ SUCCESS
+
+**Code Implementation:**
+- Created `src/lib/ui/category-config.ts` — Shared category config (7 ESC categories + Tailwind colors)
+- ESC/ESH category badge colors: green → yellow → orange → red progression (plus purple for ISH)
+- Expand/collapse pattern: ×N badges for grouped readings, smooth CSS max-h transitions
+- ReadingGroup<T>[] data shape integration across all components:
+  - `LatestReading.tsx` — "Show readings" link + expand/collapse
+  - `TimelineEntry.tsx` — ×N badge + expand/collapse
+  - `SummaryCard.tsx` — Group count display with subtitle
+  - `Timeline.tsx`, `useHealthData.ts`, `page.tsx` — ReadingGroup integration
+- Summary Card now shows groupCount (reading sessions) as primary metric
+
+**Files Modified:**
+- `src/lib/ui/category-config.ts` — New shared category config
+- `src/components/LatestReading.tsx`, `TimelineEntry.tsx`, `SummaryCard.tsx`, `Timeline.tsx`
+- `src/hooks/useHealthData.ts`, `src/app/page.tsx`
+- All 5 test suites updated (65 tests passing)
+
+**Build & Tests:** ✅ TypeScript clean, 65 tests passing
+
+**API Contract Update:** All components updated to consume ReadingGroup[] instead of HealthMetric[]
+
+**Orchestration log:** `.squad/orchestration-log/2026-04-06T18-17-elliot.md`
 
 ## Ready for Phase 2
 

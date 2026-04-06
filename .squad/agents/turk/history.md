@@ -17,6 +17,13 @@
 
 ## Learnings
 
+**2025-07-18 — ESC/ESH 2018 Classification + Multi-Reading Grouping:**
+- Switched BP classification from AHA 2017 to ESC/ESH 2018 (European Society of Cardiology). New categories: Optimal, Normal, High Normal, Grade 1/2/3, Isolated Systolic Hypertension. Updated BPCategory enum, classification logic, and all downstream consumers.
+- ISH is checked first (systolic ≥140 AND diastolic <90) — this is a separate clinical entity from Grades 1-3. Even systolic ≥180 with diastolic <90 is ISH, not Grade 3, because the grades assume both components are elevated.
+- Implemented `groupReadings()` in the service layer to detect multi-reading sessions (readings within 10 minutes → one group). Average of group becomes primary display value; classification applied to the average, not individual readings.
+- `MetricsResponse` now returns `ReadingGroup<T>[]` instead of `HealthMetric<T>[]`. Summary stats (`MetricSummary`) now include `groupCount` alongside `count` (total individual readings).
+- Key design choice: summary stats use averaged values from each group, not individual readings. This prevents triple-counting a 3-reading session.
+
 **2025-07-17 — Withings API meastype Bug Fix:**
 - The `meastype` (singular) parameter in the Withings Measure API filters individual measures within each group, NOT which groups are returned. Using `meastype=10` caused only systolic measures to appear in each group — diastolic and pulse were stripped out. The adapter then skipped every reading because diastolicMeas was always undefined.
 - Fix: Changed to `meastypes` (plural, comma-separated) with `9,10,11` to request all three BP-related types. This ensures the full measure group is returned with systolic, diastolic, and pulse intact.
@@ -42,6 +49,33 @@
   - What are the rate limits on Withings API calls? (per endpoint, per user, per day?)
   - What is the token refresh behavior for OAuth? Do access tokens expire? How long is the refresh token valid?
   - **Dependency:** Cox is deferring caching decision (Decision 5) pending rate limit investigation
+
+## Completed Work (2026-04-06 18:17)
+
+**Session:** ESC/ESH 2018 Classification + Multi-Reading Grouping  
+**Task:** Implement ESC classification + multi-reading detection/grouping  
+**Outcome:** ✅ SUCCESS
+
+**Code Implementation:**
+- BPCategory enum updated: 7 categories (OPTIMAL, NORMAL, HIGH_NORMAL, GRADE_1, GRADE_2, GRADE_3, ISOLATED_SYSTOLIC)
+- Classification logic: ESC/ESH 2018 thresholds, ISH check-first priority
+- ReadingGroup<T> generic type with grouping algorithm (10-min window)
+- Averaging: mean of systolic, diastolic, pulse (rounded to integers)
+- Classification applied to averaged values, not individual readings
+- MetricSummary updated with groupCount field
+
+**Files Modified:**
+- `src/lib/types/metrics.ts` — ReadingGroup<T>, BPCategory enum, groupCount
+- `src/lib/classification/blood-pressure.ts` — ESC/ESH 2018 thresholds, ISH logic
+- `src/lib/services/health-data-service.ts` — Multi-reading grouping and averaging
+- `src/app/api/health/metrics/route.ts` — API response shape (ReadingGroup[])
+- All unit tests updated and passing (65 tests)
+
+**Build & Tests:** ✅ TypeScript clean, 65 tests passing
+
+**API Contract Change:** Breaking change from HealthMetric[] to ReadingGroup[] (coordinated with Elliot)
+
+**Orchestration log:** `.squad/orchestration-log/2026-04-06T18-17-turk.md`
 
 ## Phase 2 Backlog
 
