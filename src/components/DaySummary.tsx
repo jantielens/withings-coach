@@ -142,7 +142,7 @@ export function DaySummary({ dayReadings, isFirst, isLast }: DaySummaryProps) {
           expanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
         }`}
       >
-        <div className="relative mt-1 mb-2">
+        <div className="relative pt-1 pb-2">
           {/* Vertical line through tier-2 area */}
           <div className="absolute left-[11px] top-0 bottom-0 w-0.5 bg-gray-300" aria-hidden="true" />
 
