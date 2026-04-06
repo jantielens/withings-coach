@@ -17,6 +17,11 @@
 
 ## Learnings
 
+**2025-07-17 — Withings API meastype Bug Fix:**
+- The `meastype` (singular) parameter in the Withings Measure API filters individual measures within each group, NOT which groups are returned. Using `meastype=10` caused only systolic measures to appear in each group — diastolic and pulse were stripped out. The adapter then skipped every reading because diastolicMeas was always undefined.
+- Fix: Changed to `meastypes` (plural, comma-separated) with `9,10,11` to request all three BP-related types. This ensures the full measure group is returned with systolic, diastolic, and pulse intact.
+- Added `[Withings]`-prefixed debug logging to the adapter: request params, HTTP status, API status, group count, and parsed readings count. This will make future API issues visible in server output immediately.
+
 **2025-07-16 — MVE Backend Build:**
 - Initialized Next.js 16 (App Router, TypeScript, Tailwind, src dir) in repo root. Had to scaffold in a temp dir and copy files because create-next-app rejects directories with existing files.
 - Built full backend: types → auth → adapters → classification → services → registry → API routes → config.
