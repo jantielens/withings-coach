@@ -11,3 +11,11 @@
 ## Learnings
 
 _No learnings yet — project just started._
+
+## Open Questions for Turk
+
+- Cox has 2 open questions about Withings API:
+  - What are the rate limits on Withings API calls? (per endpoint, per user, per day?)
+  - What is the token refresh behavior for OAuth? Do access tokens expire? How long is the refresh token valid?
+  - **Dependency:** Cox is deferring caching decision (Decision 5) pending rate limit investigation
+
