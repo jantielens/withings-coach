@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReadingGroup, BloodPressureData } from '@/lib/types/metrics';
-import { categoryConfig, worstCategory, dominantCategory } from '@/lib/ui/category-config';
+import { categoryConfig, worstCategory, dominantCategory, hasHighRiskCategory } from '@/lib/ui/category-config';
 import { CategoryDistribution } from './CategoryDistribution';
 import { RangeBar } from './RangeBar';
 import { TimelineEntry } from './TimelineEntry';
@@ -28,7 +28,7 @@ interface DaySummaryProps {
  * Tier 1 day row — condensed single-line (default) or expanded full card.
  *
  * Condensed: ● Mon, Apr 6  [████░░░░]  Normal (n=10) ▼
- * Expanded: Full day card with range bars, individual readings, grouped readings.
+ * Expanded: Same card grows to include detail below the condensed header.
  */
 export function DaySummary({ dayReadings, isFirst, isLast, expanded, onToggle }: DaySummaryProps) {
   const allCategories = dayReadings.map((r) => r.average.category);
@@ -36,6 +36,7 @@ export function DaySummary({ dayReadings, isFirst, isLast, expanded, onToggle }:
   const dominant = dominantCategory(allCategories);
   const worstConfig = categoryConfig[worst];
   const dominantConfig = categoryConfig[dominant];
+  const isHighRisk = hasHighRiskCategory(allCategories);
 
   const systolics = dayReadings.map((r) => r.average.systolic);
   const diastolics = dayReadings.map((r) => r.average.diastolic);
@@ -72,41 +73,52 @@ export function DaySummary({ dayReadings, isFirst, isLast, expanded, onToggle }:
   };
 
   return (
-    <div className="relative">
-      {/* Condensed single-line row */}
-      <div
-        className={`flex gap-3 cursor-pointer group ${lowConfidence ? 'opacity-70' : ''}`}
-        onClick={handleToggle}
-        role="button"
-        tabIndex={0}
-        aria-expanded={expanded}
-        aria-label={`${dayLabel}: ${dominantConfig.label}, n=${groupCount}${expanded ? ', expanded' : ''}`}
-        onKeyDown={handleKeyDown}
-      >
-        {/* Dot column with connecting line segments */}
-        <div className="flex-shrink-0 w-6 self-stretch flex flex-col items-center">
-          {isFirst ? (
-            <div className="flex-1" />
-          ) : (
-            <div className="flex-1 w-0.5 bg-gray-300" aria-hidden="true" />
-          )}
-          <div
-            className={`flex-shrink-0 w-4 h-4 rounded-full ${worstConfig.dotColor} ring-2 ring-white shadow-sm z-10 transition-transform duration-200 group-hover:scale-110`}
-            title={worstConfig.label}
-          />
-          {isLast && !expanded ? (
-            <div className="flex-1" />
-          ) : (
-            <div className="flex-1 w-0.5 bg-gray-300" aria-hidden="true" />
-          )}
-        </div>
+    <div className="relative flex gap-3">
+      {/* Dot column with connecting line segments */}
+      <div className="flex-shrink-0 w-6 self-stretch flex flex-col items-center">
+        {isFirst ? (
+          <div className="flex-1" />
+        ) : (
+          <div className="flex-1 w-0.5 bg-gray-300" aria-hidden="true" />
+        )}
+        <div
+          className={`flex-shrink-0 w-4 h-4 rounded-full ${worstConfig.dotColor} ring-2 ring-white shadow-sm z-10 transition-transform duration-200 group-hover:scale-110`}
+          title={worstConfig.label}
+        />
+        {isLast && !expanded ? (
+          <div className="flex-1" />
+        ) : (
+          <div className="flex-1 w-0.5 bg-gray-300" aria-hidden="true" />
+        )}
+      </div>
 
-        {/* Condensed row content */}
-        <div className="flex-1 flex items-center gap-3 py-2 px-3 rounded-lg border border-gray-100 transition-colors duration-200 group-hover:border-gray-200 group-hover:bg-gray-50/50 min-w-0 flex-wrap">
+      {/* Single card: condensed header + expandable detail */}
+      <div className={`flex-1 min-w-0 rounded-lg border border-gray-100 transition-colors duration-200 hover:border-gray-200 ${lowConfidence ? 'opacity-70' : ''}`}>
+        {/* Condensed row header */}
+        <div
+          className="flex items-center gap-3 py-2 px-3 cursor-pointer group flex-wrap"
+          onClick={handleToggle}
+          role="button"
+          tabIndex={0}
+          aria-expanded={expanded}
+          aria-label={`${dayLabel}: ${dominantConfig.label}, n=${groupCount}${isHighRisk ? ', high risk' : ''}${expanded ? ', expanded' : ''}`}
+          onKeyDown={handleKeyDown}
+        >
           {/* Day label */}
           <span className="text-sm font-semibold text-gray-800 flex-shrink-0 w-[100px]">
             {dayLabel}
           </span>
+
+          {/* Warning icon for high-risk days */}
+          {isHighRisk && (
+            <span
+              className="flex-shrink-0 w-5 h-5 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xs font-bold"
+              title={`Contains ${worstConfig.label} readings — review recommended`}
+              aria-label="High risk day"
+            >
+              !
+            </span>
+          )}
 
           {/* Category distribution bar */}
           <div className="flex-1 min-w-[60px] max-w-[140px]">
@@ -128,54 +140,53 @@ export function DaySummary({ dayReadings, isFirst, isLast, expanded, onToggle }:
             {expanded ? '▲' : '▼'}
           </span>
         </div>
-      </div>
 
-      {/* Expanded full day card */}
-      <div
-        className={`overflow-hidden transition-all duration-200 ease-in-out ${
-          expanded ? 'max-h-[3000px] opacity-100' : 'max-h-0 opacity-0'
-        }`}
-      >
-        <div className="relative ml-6 pl-3 mt-1 mb-2">
-          {/* Vertical line continuation */}
-          <div className="absolute left-[-13px] top-0 bottom-0 w-0.5 bg-gray-300" aria-hidden="true" />
-
-          {/* Full summary card */}
-          <div className={`rounded-xl p-3 ${worstConfig.zoneBg} border border-gray-100`}>
-            {/* Stats row */}
-            <div className="flex items-center gap-3 flex-wrap text-xs text-gray-600">
-              <span className="tabular-nums font-medium">{rangeLabel}</span>
-              <span className="text-gray-400">·</span>
-              <span>{countLabel}</span>
-            </div>
-
-            {/* Distribution bar + Range bar */}
-            <div className="flex items-center gap-3 mt-2">
-              <div className="flex-1 min-w-0">
-                <CategoryDistribution categories={allCategories} />
+        {/* Expanded detail — same card, no gap */}
+        <div
+          className={`overflow-hidden transition-all duration-200 ease-in-out ${
+            expanded ? 'max-h-[3000px] opacity-100' : 'max-h-0 opacity-0'
+          }`}
+        >
+          <div className="px-3 pt-0 pb-3">
+            {/* Full summary card */}
+            <div className={`rounded-lg p-3 ${worstConfig.zoneBg}`}>
+              {/* Stats row */}
+              <div className="flex items-center gap-3 flex-wrap text-xs text-gray-600">
+                <span className="tabular-nums font-medium">{rangeLabel}</span>
+                <span className="text-gray-400">·</span>
+                <span>{countLabel}</span>
               </div>
-              <div className="flex-1 min-w-0">
-                <RangeBar sysMin={sysMin} sysMax={sysMax} diaMin={diaMin} diaMax={diaMax} />
-              </div>
-            </div>
 
-            {/* Individual readings */}
-            <div className="mt-3 space-y-1 border-t border-gray-200/50 pt-2">
-              {dayReadings.map((reading) => (
-                <div key={reading.id} className="relative flex items-center gap-2 py-1">
-                  {/* Tier 2 dot */}
-                  <div className="flex-shrink-0 flex items-center justify-center w-5">
-                    <div
-                      className={`w-2.5 h-2.5 rounded-full ${categoryConfig[reading.average.category].dotColor}`}
-                      title={categoryConfig[reading.average.category].label}
-                    />
-                  </div>
-                  {/* Reading entry */}
-                  <div className="flex-1 min-w-0">
-                    <TimelineEntry reading={reading} />
-                  </div>
+              {/* Distribution bar + Range bar */}
+              <div className="flex items-center gap-3 mt-2">
+                <div className="flex-1 min-w-0">
+                  <CategoryDistribution categories={allCategories} />
                 </div>
-              ))}
+                <div className="flex-1 min-w-0">
+                  <RangeBar sysMin={sysMin} sysMax={sysMax} diaMin={diaMin} diaMax={diaMax} />
+                </div>
+              </div>
+
+              {/* Individual readings */}
+              <div className="mt-3 space-y-1 border-t border-gray-200/50 pt-2">
+                {dayReadings.map((reading) => (
+                  <div key={reading.id} className="relative flex items-center gap-2 py-1">
+                    {/* Horizontal stub from left edge to dot */}
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-3 h-0.5 bg-gray-300" aria-hidden="true" />
+                    {/* Tier 2 dot */}
+                    <div className="flex-shrink-0 flex items-center justify-center w-5 pl-2">
+                      <div
+                        className={`w-2.5 h-2.5 rounded-full ${categoryConfig[reading.average.category].dotColor} relative z-10`}
+                        title={categoryConfig[reading.average.category].label}
+                      />
+                    </div>
+                    {/* Reading entry */}
+                    <div className="flex-1 min-w-0">
+                      <TimelineEntry reading={reading} />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>

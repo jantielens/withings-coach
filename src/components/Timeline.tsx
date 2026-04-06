@@ -2,7 +2,6 @@
 
 import { Fragment, useState, useMemo } from 'react';
 import type { ReadingGroup, BloodPressureData } from '@/lib/types/metrics';
-import { hasHighRiskCategory } from '@/lib/ui/category-config';
 import { ZoneLegend } from './ZoneLegend';
 import { DaySummary } from './DaySummary';
 
@@ -22,20 +21,6 @@ function groupByDay(groups: BloodPressureGroup[]): Map<string, BloodPressureGrou
     dayGroups.set(key, dayGroup);
   }
   return dayGroups;
-}
-
-/** Compute which days should auto-expand (Grade 2+, Grade 3, ISH) */
-function computeAutoExpanded(
-  dayEntries: [string, BloodPressureGroup[]][]
-): Set<string> {
-  const expanded = new Set<string>();
-  for (const [dayKey, dayReadings] of dayEntries) {
-    const categories = dayReadings.map((r) => r.average.category);
-    if (hasHighRiskCategory(categories)) {
-      expanded.add(dayKey);
-    }
-  }
-  return expanded;
 }
 
 interface TimelineProps {
@@ -115,10 +100,8 @@ function TimelineContent({ readings }: { readings: BloodPressureGroup[] }) {
   const grouped = useMemo(() => groupByDay(sorted), [sorted]);
   const dayEntries = useMemo(() => Array.from(grouped.entries()), [grouped]);
 
-  // Auto-expand high-risk days, track user toggles
-  const autoExpanded = useMemo(() => computeAutoExpanded(dayEntries), [dayEntries]);
-
-  const [expandedDays, setExpandedDays] = useState<Set<string>>(() => autoExpanded);
+  // All days start collapsed — warning icons on high-risk days provide safety signal
+  const [expandedDays, setExpandedDays] = useState<Set<string>>(() => new Set());
 
   const toggleDay = (dayKey: string) => {
     setExpandedDays((prev) => {

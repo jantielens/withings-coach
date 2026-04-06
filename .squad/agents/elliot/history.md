@@ -181,4 +181,11 @@ Timeline component accepts optional date range filter for future coaching agent 
 - **Tier-2 dot centering**: Changed `items-start` → `items-center` on tier-2 flex rows, removed manual `pt-1.5` on dot container. Horizontal stubs use `top-1/2 -translate-y-1/2` instead of fixed `top-[14px]`.
 - **Tier-2 vertical line continuation**: Added absolute-positioned vertical line through the tier-2 expanded area at `left-[11px]` to keep stubs connected.
 
+### 2025-07-15 — Condensed Timeline 4-Fix Batch
+
+- **All-collapsed default**: Removed `computeAutoExpanded()` and `hasHighRiskCategory` import from Timeline.tsx. Initial state is `new Set()` — all days start collapsed. Clinical safety preserved via warning icon instead.
+- **Warning icon pattern**: Days with Grade 2+, Grade 3, or ISH readings get a red `!` circle (`w-5 h-5 rounded-full bg-red-100 text-red-600`) on the condensed row. Uses existing `hasHighRiskCategory()` helper — now imported in DaySummary instead of Timeline.
+- **Single-card expand pattern**: The old layout had condensed row as one element and expanded card as a separate `ml-6 mt-1 mb-2` panel — creating a visual break and timeline gaps. New approach: dot column is a sibling of the card container (`flex gap-3`), and the card wraps both the condensed header and expanded detail inside one `rounded-lg border` div. No margin, no gap — the card just grows.
+- **Margin-to-padding for timeline gaps**: Replaced `mt-1 mb-2` (margin) on expanded section with `pt-0 pb-3` (padding). Padding is inside the card container, so the dot column's `self-stretch` covers it — no timeline gaps.
+- **Tier-2 horizontal stubs**: Added `absolute left-0 top-1/2 -translate-y-1/2 w-3 h-0.5 bg-gray-300` stubs connecting each tier-2 dot to the left edge of the readings area. Dots get `relative z-10` so they layer above the stub.
 
