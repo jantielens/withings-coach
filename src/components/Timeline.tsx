@@ -1,5 +1,6 @@
 'use client';
 
+import { Fragment } from 'react';
 import type { ReadingGroup, BloodPressureData } from '@/lib/types/metrics';
 import { ZoneLegend } from './ZoneLegend';
 import { DaySummary } from './DaySummary';
@@ -68,7 +69,7 @@ export function Timeline({ readings, isLoading, error, onRetry }: TimelineProps)
       <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-100">
         <div className="h-4 w-32 bg-gray-200 rounded animate-pulse mb-4" />
         <div className="relative ml-3">
-          <div className="absolute left-[9px] top-0 bottom-0 w-0.5 bg-gray-100" />
+          <div className="absolute left-[11px] top-0 bottom-0 w-0.5 bg-gray-100" />
           <div className="space-y-4 relative">
             <SkeletonDot />
             <SkeletonDot />
@@ -101,16 +102,18 @@ export function Timeline({ readings, isLoading, error, onRetry }: TimelineProps)
 
       {/* Connected dot timeline */}
       <div className="relative ml-3">
-        {/* Vertical connecting line */}
-        <div className="absolute left-[9px] top-2 bottom-2 w-0.5 bg-gray-300" aria-hidden="true" />
-
-        <div className="space-y-4 relative">
+        <div className="relative">
           {dayEntries.map(([dayKey, dayReadings], idx) => (
-            <DaySummary
-              key={dayKey}
-              dayReadings={dayReadings}
-              isLast={idx === dayEntries.length - 1}
-            />
+            <Fragment key={dayKey}>
+              <DaySummary
+                dayReadings={dayReadings}
+                isFirst={idx === 0}
+                isLast={idx === dayEntries.length - 1}
+              />
+              {idx < dayEntries.length - 1 && (
+                <div className="ml-[11px] w-0.5 h-4 bg-gray-300" aria-hidden="true" />
+              )}
+            </Fragment>
           ))}
         </div>
       </div>

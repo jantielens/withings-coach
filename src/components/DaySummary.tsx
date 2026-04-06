@@ -19,6 +19,7 @@ function formatDayHeader(isoTimestamp: string): string {
 
 interface DaySummaryProps {
   dayReadings: BloodPressureGroup[];
+  isFirst: boolean;
   isLast: boolean;
 }
 
@@ -26,7 +27,7 @@ interface DaySummaryProps {
  * Tier 1 day summary dot with expandable tier 2 individual reading dots.
  * Shows: category distribution mini-bar, systolic/diastolic range, reading count, range bar.
  */
-export function DaySummary({ dayReadings, isLast }: DaySummaryProps) {
+export function DaySummary({ dayReadings, isFirst, isLast }: DaySummaryProps) {
   const [expanded, setExpanded] = useState(false);
 
   // Compute day-level stats
@@ -60,7 +61,7 @@ export function DaySummary({ dayReadings, isLast }: DaySummaryProps) {
     <div className="relative">
       {/* Tier 1 dot on the main vertical line */}
       <div
-        className={`flex items-center gap-3 cursor-pointer group ${isLast ? '' : ''}`}
+        className="flex gap-3 cursor-pointer group"
         onClick={() => setExpanded(!expanded)}
         role="button"
         tabIndex={0}
@@ -73,12 +74,22 @@ export function DaySummary({ dayReadings, isLast }: DaySummaryProps) {
           }
         }}
       >
-        {/* Dot */}
-        <div className="relative flex-shrink-0 flex items-center justify-center w-6">
+        {/* Dot column with connecting line segments */}
+        <div className="flex-shrink-0 w-6 self-stretch flex flex-col items-center">
+          {isFirst ? (
+            <div className="flex-1" />
+          ) : (
+            <div className="flex-1 w-0.5 bg-gray-300" aria-hidden="true" />
+          )}
           <div
-            className={`w-4 h-4 rounded-full ${config.dotColor} ring-2 ring-white shadow-sm z-10 transition-transform duration-200 group-hover:scale-110`}
+            className={`flex-shrink-0 w-4 h-4 rounded-full ${config.dotColor} ring-2 ring-white shadow-sm z-10 transition-transform duration-200 group-hover:scale-110`}
             title={config.label}
           />
+          {isLast && !expanded ? (
+            <div className="flex-1" />
+          ) : (
+            <div className="flex-1 w-0.5 bg-gray-300" aria-hidden="true" />
+          )}
         </div>
 
         {/* Summary card */}
@@ -131,13 +142,16 @@ export function DaySummary({ dayReadings, isLast }: DaySummaryProps) {
           expanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
         }`}
       >
-        <div className="mt-1 mb-2 space-y-0">
+        <div className="relative mt-1 mb-2">
+          {/* Vertical line through tier-2 area */}
+          <div className="absolute left-[11px] top-0 bottom-0 w-0.5 bg-gray-300" aria-hidden="true" />
+
           {dayReadings.map((reading) => (
-            <div key={reading.id} className="relative flex items-start gap-2 py-1 pl-10">
+            <div key={reading.id} className="relative flex items-center gap-2 py-1 pl-10">
               {/* Horizontal stub from main timeline line to tier-2 dot */}
-              <div className="absolute left-[10px] top-[14px] w-[30px] h-0.5 bg-gray-200" aria-hidden="true" />
+              <div className="absolute left-[11px] top-1/2 -translate-y-1/2 w-[29px] h-0.5 bg-gray-200" aria-hidden="true" />
               {/* Tier 2 dot */}
-              <div className="relative flex-shrink-0 flex items-center justify-center w-5 pt-1.5">
+              <div className="flex-shrink-0 flex items-center justify-center w-5">
                 <div
                   className={`w-2.5 h-2.5 rounded-full ${categoryConfig[reading.average.category].dotColor} z-10`}
                   title={categoryConfig[reading.average.category].label}

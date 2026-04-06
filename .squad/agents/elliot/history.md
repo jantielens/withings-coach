@@ -163,4 +163,12 @@ Timeline component accepts optional date range filter for future coaching agent 
 **Orchestration log:** `.squad/orchestration-log/2026-04-06T19-25-elliot-viz-implementation.md`  
 **Decision document:** Merged into `.squad/decisions.md` (Visualization Decisions section, Decisions 1–8)
 
+### 2025-07-15 — Timeline CSS/Alignment Fixes
+
+- **Flex-col dot column pattern**: Replaced single absolute-positioned vertical line with per-entry flex-col dot columns (`self-stretch flex flex-col items-center`). `flex-1` spacers above/below the dot auto-center the dot vertically on the summary card. First entry omits top line, last entry omits bottom line — line naturally starts/ends at dot centers.
+- **Per-entry line segments + connectors**: Removed `space-y-4` gap class. Instead, explicit `h-4 w-0.5 bg-gray-300` connector divs between entries bridge the gap. Line position uses `ml-[11px]` (center of 24px column minus half of 2px line) for pixel-perfect alignment.
+- **z-index layering for sticky headers**: Header `z-10` was same as dot `z-10`, causing bleed-through on scroll. Bumped header to `z-50`. Dots stay at `z-10`.
+- **Tier-2 dot centering**: Changed `items-start` → `items-center` on tier-2 flex rows, removed manual `pt-1.5` on dot container. Horizontal stubs use `top-1/2 -translate-y-1/2` instead of fixed `top-[14px]`.
+- **Tier-2 vertical line continuation**: Added absolute-positioned vertical line through the tier-2 expanded area at `left-[11px]` to keep stubs connected.
+
 

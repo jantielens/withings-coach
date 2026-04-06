@@ -23,7 +23,7 @@ export default function Home() {
   return (
     <div className="flex flex-col flex-1 bg-gray-50">
       {/* Header */}
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
+      <header className="bg-white border-b border-gray-100 sticky top-0 z-50">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-gray-900">Withings Coach</h1>
