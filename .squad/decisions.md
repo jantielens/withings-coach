@@ -226,6 +226,45 @@ Readings:   12 measurements over 7 days
 
 *These decisions are binding unless overridden by team consensus. Disagreements go through Cox.*
 
+---
+
+### Architecture Decisions — API & Data
+
+**From:** Turk (Backend Dev)  
+**Date:** 2026-04-06  
+**Title:** Withings API Uses POST with URL-Encoded Body
+
+**What:** The Withings `measure?action=getmeas` endpoint requires `POST` with `Content-Type: application/x-www-form-urlencoded` and a Bearer token in the Authorization header. Not a GET with query params.
+
+**Why it matters:** Anyone touching the adapter or writing tests needs to know this — mocking a GET won't work. Withings docs are ambiguous on this; confirmed via their API reference.
+
+**Implementation detail:** Measure values from Withings use `value * 10^unit` format (e.g., value=128, unit=0 → 128 mmHg). The `unit` field is an exponent, not a unit label.
+
+**Status:** ✅ Implemented in `src/lib/adapters/withings-adapter.ts`
+
+---
+
+### Data Quality Decisions — Input Validation
+
+**From:** Carla (Tester)  
+**Date:** 2026-04-06  
+**Title:** Add Input Validation to BP Classification (Phase 2)
+
+**Observation:** `classifyBloodPressure()` accepts any number without validation. Zero and negative values silently classify as "normal" because they fall below all thresholds. This is mathematically correct but clinically meaningless.
+
+**Risk:**
+- A sensor glitch sending `0/0` would display as "Normal" — misleading
+- The LLM coaching agent (Phase 2) could interpret a zero reading as healthy
+- The doctor view (Phase 3) showing `0/0 — Normal` would erode trust immediately
+
+**Recommendation:** Add a guard to `classifyBloodPressure()` that throws or returns a distinct status for physiologically impossible values. Reasonable lower bounds: systolic ≥ 40 mmHg, diastolic ≥ 20 mmHg.
+
+**Priority:** Low (MVE safe — Withings API won't send zeroes) → Medium (before Phase 2 coaching agent)
+
+**Status:** 📋 Proposed for Phase 2. **Assigned to:** Turk (implementation), Kelso (clinical lower bounds validation)
+
+---
+
 ## Governance
 
 - All meaningful changes require team consensus

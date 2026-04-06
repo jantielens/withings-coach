@@ -22,4 +22,21 @@
 
 ## Learnings
 
-_No learnings yet — project just started._
+### 2025-07-15 — MVE Frontend Build
+
+- **Tailwind v4 + Next.js 16**: Project uses `@import "tailwindcss"` CSS-based config, not JS config files. Tailwind v4 classes work out of the box. No `tailwind.config.ts` needed.
+- **Types alignment**: Turk's `MetricSummary.stats` includes `median` alongside `avg/min/max` — matched that in the SummaryCard (shows median below average). `timestamp` is `string` (ISO 8601), not `Date`.
+- **Component structure**: Extracted `categoryConfig` (label + Tailwind classes) as a shared pattern in both `LatestReading` and `TimelineEntry`. If we add more components using BP categories, consider pulling this into a shared util.
+- **Parallel workflow**: Turk created `src/` and `src/lib/types/metrics.ts` while I waited. Had to poll ~2 minutes for the directory to appear. Future tasks: coordinate on a branch or use a shared signal.
+- **Build clean**: All 6 frontend files (hook, 4 components, page) compile with zero TypeScript errors against Turk's types on first attempt.
+
+## Cross-Team Collaboration (2026-04-06 MVE Build)
+
+**Turk (Backend):** All types matched exactly on first build. Your `MetricSummary` structure with `median` in stats is correct. Components render cleanly with zero TypeScript drift.
+
+**Carla (Tester):** 72 tests passing against your components. No rendering issues found in jsdom environment. One data quality flag in classification (zero/negative values) — defer to Phase 2.
+
+## Ready for Phase 2
+
+Timeline component accepts optional date range filter for future coaching agent time slices and doctor view date ranges. No changes needed; feature is additive.
+
