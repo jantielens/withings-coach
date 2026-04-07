@@ -14,9 +14,12 @@ export function buildBPPrompt(
     ? Array.from(diaryEntries.values())
     : diaryEntries;
 
+  const hasContext = !!(contextNotes && contextNotes.length > 0);
+  const hasDiary = !!(diaryArray && diaryArray.length > 0);
+
   const sections = [
-    buildRole(),
-    buildGoal(dayCount),
+    buildRole(hasContext, hasDiary),
+    buildGoal(dayCount, hasContext),
   ];
 
   const generalContext = buildGeneralContext(contextNotes);
@@ -31,27 +34,41 @@ export function buildBPPrompt(
 
   sections.push(
     buildDataTable(readings, dayCount, diaryArray),
-    buildOutputFormat(),
+    buildOutputFormat(hasContext),
   );
 
   return sections.join('\n\n---\n\n');
 }
 
-function buildRole(): string {
-  return `## Role
+function buildRole(hasContext: boolean, hasDiary: boolean): string {
+  let role = `## Role
 
 You are a health data analyst specialized in cardiovascular health and blood pressure monitoring. Your role is to identify patterns, trends, and insights in blood pressure readings based on ESC/ESH 2018 classification guidelines.`;
+
+  if (hasContext || hasDiary) {
+    role += `\n\n**Language note:** The patient's medical records and diary entries are written in Dutch. Read, interpret, and reference this Dutch-language content in your analysis. Do not skip or summarize it away — it contains critical clinical details.`;
+  }
+
+  return role;
 }
 
-function buildGoal(dayCount: number): string {
-  return `## Goal
+function buildGoal(dayCount: number, hasContext: boolean): string {
+  let goal = `## Goal
 
 Analyze the following blood pressure data collected over ${dayCount} days. Identify:
 - Overall trend (improving, worsening, or stable)
 - Time-of-day patterns (morning hypertension, evening spikes)
 - Reading variability and consistency
 - Days of concern (Grade 2+ readings)
-- Actionable coaching feedback the user can discuss with their physician
+- Actionable coaching feedback the user can discuss with their physician`;
+
+  if (hasContext) {
+    goal += `
+
+**IMPORTANT:** A "General Context" section is provided below containing the patient's medical records (e.g., cardiologist reports, medications, diagnoses). You MUST incorporate this information into every part of your analysis — it is essential for interpreting the readings correctly.`;
+  }
+
+  goal += `
 
 ESC/ESH Classification Reference:
 - Optimal: <120/80 mmHg
@@ -63,6 +80,8 @@ ESC/ESH Classification Reference:
 - Isolated Systolic: ≥140/<90
 
 Target: 120/80 mmHg for most adults.`;
+
+  return goal;
 }
 
 function sanitizeDiaryText(text: string): string {
@@ -78,7 +97,9 @@ function buildGeneralContext(contextNotes?: ContextNote[]): string | null {
 
   const bullets = contextNotes.map((n) => `- ${n.text}`);
 
-  return `## General Context
+  return `## ⚠️ General Context — CRITICAL: Patient Medical Records
+
+> **Read this section carefully.** It contains the patient's medical history, diagnoses, medications, and cardiologist notes. These details are essential for interpreting the blood pressure data below. Reference specific items from this context throughout your analysis.
 
 ${bullets.join('\n')}`;
 }
@@ -146,15 +167,24 @@ ${rows.join('\n')}
 Period: ${startDate} to ${endDate} | Total readings: ${totalReadings} | Days with data: ${dayCount}`;
 }
 
-function buildOutputFormat(): string {
-  return `## Output Format
+function buildOutputFormat(hasContext: boolean): string {
+  let sections = `## Output Format
 
 Please provide your analysis in these sections:
 1. **Key Observations** (3-5 notable patterns)
 2. **Trend Analysis** (improving/stable/worsening with reasoning)
 3. **Time-of-Day Patterns** (morning vs evening, if detectable)
 4. **Risk Assessment** (category distribution summary)
-5. **Coaching Suggestions** (2-3 actionable lifestyle observations)
+5. **Coaching Suggestions** (2-3 actionable lifestyle observations)`;
+
+  if (hasContext) {
+    sections += `
+6. **Context Integration** (explain how the patient's medical records, medications, and diary entries relate to the observed BP trends — cite specific details from the General Context section)`;
+  }
+
+  sections += `
 
 ⚠️ IMPORTANT: This analysis is for educational and informational purposes only. It is NOT medical advice. Do not suggest medication changes or dosing. If readings consistently exceed 180/110 mmHg, recommend seeking immediate medical attention. Always encourage consulting a physician for medical decisions.`;
+
+  return sections;
 }
