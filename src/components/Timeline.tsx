@@ -2,6 +2,7 @@
 
 import { Fragment, useState, useMemo } from 'react';
 import type { ReadingGroup, BloodPressureData } from '@/lib/types/metrics';
+import type { DiaryEntry } from '@/lib/types/diary';
 import { ZoneLegend } from './ZoneLegend';
 import { DaySummary } from './DaySummary';
 
@@ -28,6 +29,9 @@ interface TimelineProps {
   isLoading: boolean;
   error: string | null;
   onRetry: () => void;
+  diaryEntries?: Map<string, DiaryEntry>;
+  onSaveDiary?: (date: string, text: string) => void;
+  onDeleteDiary?: (date: string) => void;
 }
 
 function SkeletonDot() {
@@ -46,7 +50,7 @@ function SkeletonDot() {
   );
 }
 
-export function Timeline({ readings, isLoading, error, onRetry }: TimelineProps) {
+export function Timeline({ readings, isLoading, error, onRetry, diaryEntries, onSaveDiary, onDeleteDiary }: TimelineProps) {
   if (error) {
     return (
       <div className="rounded-2xl bg-white p-8 shadow-sm border border-red-100 text-center">
@@ -84,11 +88,16 @@ export function Timeline({ readings, isLoading, error, onRetry }: TimelineProps)
     return null;
   }
 
-  return <TimelineContent readings={readings} />;
+  return <TimelineContent readings={readings} diaryEntries={diaryEntries} onSaveDiary={onSaveDiary} onDeleteDiary={onDeleteDiary} />;
 }
 
 /** Inner component so hooks are only called when we have data */
-function TimelineContent({ readings }: { readings: BloodPressureGroup[] }) {
+function TimelineContent({ readings, diaryEntries, onSaveDiary, onDeleteDiary }: {
+  readings: BloodPressureGroup[];
+  diaryEntries?: Map<string, DiaryEntry>;
+  onSaveDiary?: (date: string, text: string) => void;
+  onDeleteDiary?: (date: string) => void;
+}) {
   // Sort newest first
   const sorted = useMemo(
     () =>
@@ -161,20 +170,26 @@ function TimelineContent({ readings }: { readings: BloodPressureGroup[] }) {
       {/* Connected dot timeline */}
       <div className="relative ml-3">
         <div className="relative">
-          {dayEntries.map(([dayKey, dayReadings], idx) => (
-            <Fragment key={dayKey}>
-              <DaySummary
-                dayReadings={dayReadings}
-                isFirst={idx === 0}
-                isLast={idx === dayEntries.length - 1}
-                expanded={expandedDays.has(dayKey)}
-                onToggle={() => toggleDay(dayKey)}
-              />
-              {idx < dayEntries.length - 1 && (
-                <div className="ml-[43px] w-0.5 h-4 bg-gray-300" aria-hidden="true" />
-              )}
-            </Fragment>
-          ))}
+          {dayEntries.map(([dayKey, dayReadings], idx) => {
+            const dateStr = dayReadings[0].timestamp.slice(0, 10); // YYYY-MM-DD
+            return (
+              <Fragment key={dayKey}>
+                <DaySummary
+                  dayReadings={dayReadings}
+                  isFirst={idx === 0}
+                  isLast={idx === dayEntries.length - 1}
+                  expanded={expandedDays.has(dayKey)}
+                  onToggle={() => toggleDay(dayKey)}
+                  diaryEntry={diaryEntries?.get(dateStr)}
+                  onSaveDiary={onSaveDiary}
+                  onDeleteDiary={onDeleteDiary}
+                />
+                {idx < dayEntries.length - 1 && (
+                  <div className="ml-[43px] w-0.5 h-4 bg-gray-300" aria-hidden="true" />
+                )}
+              </Fragment>
+            );
+          })}
         </div>
       </div>
     </div>

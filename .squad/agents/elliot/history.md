@@ -22,6 +22,27 @@
 
 ## Learnings
 
+### 2025-07-25 — Diary UI (Inline Editing + Data Hook)
+
+- **Created `src/lib/types/diary.ts`**: Already existed from Turk's parallel work — `DiaryEntry` type with `id`, `userId`, `date` (YYYY-MM-DD), `text`, `createdAt`, `updatedAt`. No changes needed.
+- **Created `src/hooks/useDiaryEntries.ts`**: Data hook fetching diary entries for a date range via `GET /api/diary?from=...&to=...&userId=default`. Returns `Map<string, DiaryEntry>` keyed by YYYY-MM-DD for O(1) lookup. Includes `saveEntry` (POST) and `deleteEntry` (DELETE) with auto-refetch after mutations. Fails silently if API not available (Turk building in parallel).
+- **Created `src/components/DiaryNote.tsx`**: Two-state inline component — display mode (text + hover-reveal ✏️/🗑️ icons) and edit mode (auto-expanding textarea, 500-char limit with counter, Save/Cancel buttons). Empty state shows subtle "📝 Add note" text button. Supports Cmd/Ctrl+Enter to save and Escape to cancel.
+- **Modified `src/components/DaySummary.tsx`**: Added `diaryEntry`, `onSaveDiary`, `onDeleteDiary` optional props. DiaryNote renders at the bottom of the expanded section with a subtle top border, below tier-2 readings. Timeline line continuation logic adjusted — the last tier-2 reading only omits the bottom line if there's no diary section.
+- **Modified `src/components/Timeline.tsx`**: Threaded `diaryEntries` Map and save/delete callbacks through `TimelineContent` to each `DaySummary`. Computed `dateStr` from first reading's timestamp for diary Map lookup.
+- **Modified `src/app/page.tsx`**: Added `useDiaryEntries` hook. Computes date range from readings data (min/max dates). Passes `diaryEntries`, `saveDiary`, `deleteDiary` to Timeline and diary entries to LLMPromptDebugger.
+- **Modified `src/lib/llm-prompt/prompt-builder.ts`**: Updated `buildBPPrompt` to accept `Map<string, DiaryEntry> | DiaryEntry[]` — normalizes to array internally. Already had diary support from Turk's work; just widened the type signature.
+- **Modified `src/components/LLMPromptDebugger.tsx`**: Added optional `diaryEntries` prop, passes it through to `buildBPPrompt`.
+- **Build & Tests**: ✅ TypeScript clean, `npm run build` passes, zero new dependencies.
+
+### 2025-07-25 — LLM Prompt Debugger
+
+- **Created `src/lib/llm-prompt/prompt-builder.ts`**: Pure function `buildBPPrompt(readings, dayCount)` that assembles a 4-section prompt (Role → Goal → Data table → Output format) from live `ReadingGroup<BloodPressureData>[]` data. Reuses `categoryConfig` labels from `category-config.ts` for ESC/ESH category names. Data is sorted chronologically and rendered as a Markdown table with date, time, SYS, DIA, pulse, category, and grouped-reading notes. Includes a summary stats line with period, total readings, and day count.
+- **Created `src/components/LLMPromptDebugger.tsx`**: Collapsible section (collapsed by default) with expand/collapse toggle. Shows character count + estimated token count (~4 chars/token), a "Copy to Clipboard" button with 2-second "Copied!" feedback, and a read-only monospace `<textarea>`. Styled as a subtle developer tool (gray border, small text, monospace font) — not a primary feature.
+- **Integrated in `page.tsx`**: Rendered between Timeline and disclaimer footer, guarded by `!isLoading && data.length > 0`. Passes `readings={data}` and `dayCount={dayCount}` as props.
+- **Prompt uses `useMemo`**: Avoids recalculating the prompt string on every render — only recomputes when `readings` or `dayCount` change.
+- **Clipboard fallback**: Uses `navigator.clipboard.writeText` with a `document.execCommand('copy')` fallback for older browsers.
+- **Build & Tests**: ✅ TypeScript clean, `npm run build` passes, zero new dependencies.
+
 ### 2025-07-24 — Ideal BP Reference Markers (120/80 mmHg)
 
 - **Added subtle ideal BP reference lines to RangeBar**: Two 1px `bg-gray-400/40` vertical lines at 120 mmHg (systolic ideal) and 80 mmHg (diastolic ideal), positioned using the same `((value - scaleMin) / scaleRange) * 100` math as the bar segments. Lines render behind colored segments — the ideal markers use no z-index while diastolic gets `z-[1]` and systolic gets `z-[2]`, preserving the existing layering.

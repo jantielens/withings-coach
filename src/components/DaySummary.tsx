@@ -1,10 +1,12 @@
 'use client';
 
 import type { ReadingGroup, BloodPressureData } from '@/lib/types/metrics';
+import type { DiaryEntry } from '@/lib/types/diary';
 import { categoryConfig, worstCategory, hasHighRiskCategory } from '@/lib/ui/category-config';
 import { TimelineBar } from './TimelineBar';
 import { RangeBar } from './RangeBar';
 import { TimelineEntry } from './TimelineEntry';
+import { DiaryNote } from './DiaryNote';
 
 type BloodPressureGroup = ReadingGroup<BloodPressureData>;
 
@@ -30,6 +32,9 @@ interface DaySummaryProps {
   isLast: boolean;
   expanded: boolean;
   onToggle: () => void;
+  diaryEntry?: DiaryEntry;
+  onSaveDiary?: (date: string, text: string) => void;
+  onDeleteDiary?: (date: string) => void;
 }
 
 /**
@@ -39,7 +44,7 @@ interface DaySummaryProps {
  * Tick marks in the bar indicate individual readings. Warning icon on the right for high-risk days.
  * Expanded: Range bar + individual tier-2 readings (no duplicate summary).
  */
-export function DaySummary({ dayReadings, isFirst, isLast, expanded, onToggle }: DaySummaryProps) {
+export function DaySummary({ dayReadings, isFirst, isLast, expanded, onToggle, diaryEntry, onSaveDiary, onDeleteDiary }: DaySummaryProps) {
   const allCategories = dayReadings.map((r) => r.average.category);
   const worst = worstCategory(allCategories);
   const worstConfig = categoryConfig[worst];
@@ -55,6 +60,7 @@ export function DaySummary({ dayReadings, isFirst, isLast, expanded, onToggle }:
   const groupCount = dayReadings.length;
   const dayLabel = formatDayShort(dayReadings[0].timestamp);
   const dayLabelLong = formatDayLong(dayReadings[0].timestamp);
+  const dateKey = dayReadings[0].timestamp.slice(0, 10); // YYYY-MM-DD for diary lookup
 
   const handleToggle = () => onToggle();
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -137,7 +143,7 @@ export function DaySummary({ dayReadings, isFirst, isLast, expanded, onToggle }:
         }`}
       >
         {dayReadings.map((reading, i) => {
-          const isLastTier2 = isLast && i === dayReadings.length - 1;
+          const isLastTier2 = isLast && i === dayReadings.length - 1 && !onSaveDiary;
           const readingConfig = categoryConfig[reading.average.category];
           return (
             <div key={reading.id} className="flex items-center">
@@ -165,6 +171,33 @@ export function DaySummary({ dayReadings, isFirst, isLast, expanded, onToggle }:
             </div>
           );
         })}
+
+        {/* Diary note — at the bottom of expanded section */}
+        {onSaveDiary && onDeleteDiary && (
+          <div className="flex items-start">
+            {/* Spacer matching warning column + gap */}
+            <div className="flex-shrink-0 w-8" aria-hidden="true" />
+            {/* Dot column — continue/end the timeline line */}
+            <div className="flex-shrink-0 w-6 self-stretch flex flex-col items-center">
+              {isLast ? (
+                <div className="flex-1" />
+              ) : (
+                <div className="flex-1 w-0.5 bg-gray-300" aria-hidden="true" />
+              )}
+            </div>
+            {/* Spacer matching horizontal stub */}
+            <div className="flex-shrink-0 w-3" aria-hidden="true" />
+            {/* Diary content */}
+            <div className="flex-1 min-w-0 border-t border-gray-100 pt-2 pb-3 px-1">
+              <DiaryNote
+                date={dateKey}
+                entry={diaryEntry}
+                onSave={onSaveDiary}
+                onDelete={onDeleteDiary}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

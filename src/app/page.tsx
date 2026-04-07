@@ -1,9 +1,11 @@
 'use client';
 
 import { useHealthData } from '@/hooks/useHealthData';
+import { useDiaryEntries } from '@/hooks/useDiaryEntries';
 import { LatestReading } from '@/components/LatestReading';
 import { SummaryCard } from '@/components/SummaryCard';
 import { Timeline } from '@/components/Timeline';
+import { LLMPromptDebugger } from '@/components/LLMPromptDebugger';
 import type { BloodPressureData } from '@/lib/types/metrics';
 
 export default function Home() {
@@ -23,6 +25,20 @@ export default function Home() {
   const dayCount = data.length > 0
     ? new Set(data.map((g) => g.timestamp.slice(0, 10))).size
     : 30;
+
+  // Compute date range from readings for diary fetch
+  const dateRange = data.length > 0
+    ? (() => {
+        const dates = data.map((g) => g.timestamp.slice(0, 10)).sort();
+        return { start: dates[0], end: dates[dates.length - 1] };
+      })()
+    : null;
+
+  const { entries: diaryEntries, saveEntry: saveDiary, deleteEntry: deleteDiary } = useDiaryEntries({
+    startDate: dateRange?.start ?? '',
+    endDate: dateRange?.end ?? '',
+    enabled: !!dateRange,
+  });
 
   return (
     <div className="flex flex-col flex-1 bg-gray-50">
@@ -82,7 +98,15 @@ export default function Home() {
           isLoading={isLoading}
           error={error}
           onRetry={refresh}
+          diaryEntries={diaryEntries}
+          onSaveDiary={saveDiary}
+          onDeleteDiary={deleteDiary}
         />
+
+        {/* LLM Prompt Debugger */}
+        {!isLoading && data.length > 0 && (
+          <LLMPromptDebugger readings={data} dayCount={dayCount} diaryEntries={diaryEntries} />
+        )}
 
         {/* Disclaimer footer */}
         {!isLoading && data.length > 0 && (
