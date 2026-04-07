@@ -134,8 +134,8 @@ function TimelineContent({ readings, diaryEntries, onSaveDiary, onDeleteDiary }:
       <div className="sticky top-16 z-40 bg-white/95 backdrop-blur-sm border-b border-gray-100 -mx-6 px-6 py-1">
         <div className="relative ml-3">
           <div className="relative flex gap-3">
-            {/* Spacer matching warning icon column */}
-            <div className="flex-shrink-0 w-5" aria-hidden="true" />
+            {/* Spacer matching warning / note icon column */}
+            <div className="flex-shrink-0 w-7" aria-hidden="true" />
             {/* Spacer matching dot column width */}
             <div className="flex-shrink-0 w-6" aria-hidden="true" />
             {/* Grid matching day row columns */}
@@ -185,7 +185,7 @@ function TimelineContent({ readings, diaryEntries, onSaveDiary, onDeleteDiary }:
                   onDeleteDiary={onDeleteDiary}
                 />
                 {idx < dayEntries.length - 1 && (
-                  <div className="ml-[43px] w-0.5 h-4 bg-gray-300" aria-hidden="true" />
+                  <div className="ml-[51px] w-0.5 h-4 bg-gray-300" aria-hidden="true" />
                 )}
               </Fragment>
             );

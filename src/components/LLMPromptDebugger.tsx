@@ -3,21 +3,28 @@
 import { useState, useMemo } from 'react';
 import type { ReadingGroup, BloodPressureData } from '@/lib/types/metrics';
 import type { DiaryEntry } from '@/lib/types/diary';
+import type { ContextNote } from '@/lib/types/context';
 import { buildBPPrompt } from '@/lib/llm-prompt/prompt-builder';
 
 interface LLMPromptDebuggerProps {
   readings: ReadingGroup<BloodPressureData>[];
   dayCount: number;
   diaryEntries?: Map<string, DiaryEntry>;
+  contextNotes?: ContextNote[];
 }
 
-export function LLMPromptDebugger({ readings, dayCount, diaryEntries }: LLMPromptDebuggerProps) {
+export function LLMPromptDebugger({
+  readings,
+  dayCount,
+  diaryEntries,
+  contextNotes = [],
+}: LLMPromptDebuggerProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const prompt = useMemo(
-    () => buildBPPrompt(readings, dayCount, diaryEntries),
-    [readings, dayCount, diaryEntries]
+    () => buildBPPrompt(readings, dayCount, diaryEntries, contextNotes),
+    [readings, dayCount, diaryEntries, contextNotes]
   );
 
   const charCount = prompt.length;

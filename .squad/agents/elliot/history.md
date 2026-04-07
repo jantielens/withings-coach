@@ -22,6 +22,16 @@
 
 ## Learnings
 
+### 2025-07-26 — General Context Notes UI (Persistent Non-Time-Bound Notes)
+
+- **`src/lib/types/context.ts` already existed**: Turk created `ContextNote` type with `id`, `userId`, `text`, `orderIdx`, `createdAt`, `updatedAt` — and `ContextNoteInput`. No changes needed.
+- **Created `src/hooks/useContextNotes.ts`**: Simpler version of `useDiaryEntries` — no date range needed. Fetches all notes via `GET /api/context?userId=default`, returns `{ notes, createNote, deleteNote, isLoading }`. Same silent-fallback pattern for when API isn't available yet. `createNote(text)` → POST, `deleteNote(id)` → DELETE with auto-refetch after mutations.
+- **Created `src/components/ContextNotesPanel.tsx`**: Collapsible section titled "📋 General Context" with count badge. Collapsed by default. Shows list of existing notes with hover-reveal 🗑️ delete button, empty state message, and an input area (2-row textarea + "Add" button). 500-char limit with counter. Supports Cmd/Ctrl+Enter to add. Styled with subtle gray borders and small text matching LLMPromptDebugger aesthetic.
+- **Modified `src/components/LLMPromptDebugger.tsx`**: Added `contextNotes`, `onCreateContextNote`, `onDeleteContextNote`, `isContextLoading` props. Renders `<ContextNotesPanel>` inside the expanded view above the prompt textarea. Passes `contextNotes` to `buildBPPrompt` — Turk already updated prompt-builder to accept and render them as a "General Background Context" section.
+- **Modified `src/app/page.tsx`**: Added `useContextNotes()` hook. Passes `contextNotes`, `createContextNote`, `deleteContextNote`, and `isContextLoading` down to `<LLMPromptDebugger>`.
+- **Turk parallel work aligned**: Both `context.ts` types and `prompt-builder.ts` `buildGeneralContext()` function were already in place — zero drift on integration.
+- **Build & Tests**: ✅ TypeScript clean, `npm run build` passes, zero new dependencies.
+
 ### 2025-07-25 — Diary UI (Inline Editing + Data Hook)
 
 - **Created `src/lib/types/diary.ts`**: Already existed from Turk's parallel work — `DiaryEntry` type with `id`, `userId`, `date` (YYYY-MM-DD), `text`, `createdAt`, `updatedAt`. No changes needed.

@@ -1,11 +1,13 @@
 import type { ReadingGroup, BloodPressureData } from '@/lib/types/metrics';
 import type { DiaryEntry } from '@/lib/types/diary';
+import type { ContextNote } from '@/lib/types/context';
 import { categoryConfig } from '@/lib/ui/category-config';
 
 export function buildBPPrompt(
   readings: ReadingGroup<BloodPressureData>[],
   dayCount: number,
-  diaryEntries?: Map<string, DiaryEntry> | DiaryEntry[]
+  diaryEntries?: Map<string, DiaryEntry> | DiaryEntry[],
+  contextNotes?: ContextNote[]
 ): string {
   // Normalize to array
   const diaryArray = diaryEntries instanceof Map
@@ -16,6 +18,11 @@ export function buildBPPrompt(
     buildRole(),
     buildGoal(dayCount),
   ];
+
+  const generalContext = buildGeneralContext(contextNotes);
+  if (generalContext) {
+    sections.push(generalContext);
+  }
 
   const contextSection = buildPatientContext(diaryArray);
   if (contextSection) {
@@ -58,18 +65,36 @@ ESC/ESH Classification Reference:
 Target: 120/80 mmHg for most adults.`;
 }
 
+function sanitizeDiaryText(text: string): string {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^\s*[-*•]\s*/, '').trim())
+    .filter((line) => line.length > 0)
+    .join(' | ');
+}
+
+function buildGeneralContext(contextNotes?: ContextNote[]): string | null {
+  if (!contextNotes || contextNotes.length === 0) return null;
+
+  const bullets = contextNotes.map((n) => `- ${n.text}`);
+
+  return `## General Context
+
+${bullets.join('\n')}`;
+}
+
 function buildPatientContext(diaryEntries?: DiaryEntry[]): string | null {
   if (!diaryEntries || diaryEntries.length === 0) return null;
 
-  const lines = diaryEntries
+  const blocks = diaryEntries
     .sort((a, b) => a.date.localeCompare(b.date))
-    .map((e) => `- ${e.date}: ${e.text}`);
+    .map((e) => `**${e.date}:**\n> ${sanitizeDiaryText(e.text)}`);
 
   return `## Patient Context
 
 The patient provided the following diary notes for the analysis period:
 
-${lines.join('\n')}`;
+${blocks.join('\n\n')}`;
 }
 
 function buildDataTable(
@@ -102,7 +127,8 @@ function buildDataTable(
     const { systolic, diastolic, pulse, category } = group.average;
     const label = categoryConfig[category].label;
     const notes = group.isGrouped ? `Avg of ${group.readings.length}` : 'Single';
-    const diary = diaryByDate.get(date) ?? '';
+    const rawDiary = diaryByDate.get(date) ?? '';
+    const diary = rawDiary ? sanitizeDiaryText(rawDiary) : '';
 
     return `| ${date} | ${time} | ${systolic} | ${diastolic} | ${pulse} | ${label} | ${notes} | ${diary} |`;
   });

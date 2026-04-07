@@ -17,6 +17,14 @@
 
 ## Learnings
 
+**2025-07-25 — General Context (Context Notes) Feature:**
+- Added `context_notes` table to the existing diary SQLite database — same `initDb()` function, second `CREATE TABLE IF NOT EXISTS`. No new DB file needed.
+- New CRUD service (`context-service.ts`) follows the exact same sql.js patterns as diary-service: positional params, `stmt.bind()/step()/get()/free()`, manual `saveDb()` after writes, singleton `getDb()`.
+- ID format uses `ctx_${userId}_${Date.now()}` — timestamp-based, no date dependency unlike diary entries which are keyed by date.
+- `orderIdx` auto-assigns via `SELECT MAX(orderIdx)` when not provided, so notes append in order by default.
+- API route mirrors diary route conventions: GET returns `{ notes }`, POST returns `{ note }` with 201, DELETE checks existence and returns 404 if not found.
+- Prompt builder now accepts optional `contextNotes` param — backward compatible, existing callers unaffected. General Context section renders between Goal and Patient Context sections, omitted when empty.
+
 **2025-07-24 — Migrated from better-sqlite3 to sql.js (pure JS SQLite):**
 - `better-sqlite3` native C++ module kept failing with `NODE_MODULE_VERSION` mismatch and `ERR_DLOPEN_FAILED` in Next.js Turbopack. `serverExternalPackages` was a brittle workaround that broke across Node versions.
 - Switched to `sql.js` — SQLite compiled to JavaScript via Emscripten. Zero native bindings, always works.

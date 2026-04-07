@@ -74,10 +74,13 @@ export function DaySummary({ dayReadings, isFirst, isLast, expanded, onToggle, d
     <div>
       {/* Tier-1 row: day dot on main timeline + summary card */}
       <div className="relative flex gap-3">
-        {/* Warning icon column — reserves space so dots stay aligned */}
-        <div className="flex-shrink-0 w-5 self-stretch flex items-center justify-center">
+        {/* Warning / note icon column — reserves space so dots stay aligned */}
+        <div className="flex-shrink-0 w-7 self-stretch flex items-center justify-center gap-px">
           {isHighRisk && (
             <span title="High risk" className="text-sm leading-none">⚠️</span>
+          )}
+          {diaryEntry && (
+            <span title="Diary note" className="text-xs leading-none text-gray-400">📝</span>
           )}
         </div>
 
@@ -147,8 +150,8 @@ export function DaySummary({ dayReadings, isFirst, isLast, expanded, onToggle, d
           const readingConfig = categoryConfig[reading.average.category];
           return (
             <div key={reading.id} className="flex items-center">
-              {/* Spacer matching warning column + gap from tier-1 (w-5 + gap-3 = 32px) */}
-              <div className="flex-shrink-0 w-8" aria-hidden="true" />
+              {/* Spacer matching warning column + gap from tier-1 (w-7 + gap-3 = 40px) */}
+              <div className="flex-shrink-0 w-10" aria-hidden="true" />
               {/* Dot column — same w-6 as tier-1, keeps dots on the SAME vertical line */}
               <div className="flex-shrink-0 w-6 self-stretch flex flex-col items-center">
                 <div className="flex-1 w-0.5 bg-gray-300" aria-hidden="true" />
@@ -176,7 +179,7 @@ export function DaySummary({ dayReadings, isFirst, isLast, expanded, onToggle, d
         {onSaveDiary && onDeleteDiary && (
           <div className="flex items-start">
             {/* Spacer matching warning column + gap */}
-            <div className="flex-shrink-0 w-8" aria-hidden="true" />
+            <div className="flex-shrink-0 w-10" aria-hidden="true" />
             {/* Dot column — continue/end the timeline line */}
             <div className="flex-shrink-0 w-6 self-stretch flex flex-col items-center">
               {isLast ? (

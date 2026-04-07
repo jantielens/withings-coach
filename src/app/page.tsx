@@ -2,10 +2,12 @@
 
 import { useHealthData } from '@/hooks/useHealthData';
 import { useDiaryEntries } from '@/hooks/useDiaryEntries';
+import { useContextNotes } from '@/hooks/useContextNotes';
 import { LatestReading } from '@/components/LatestReading';
 import { SummaryCard } from '@/components/SummaryCard';
 import { Timeline } from '@/components/Timeline';
 import { LLMPromptDebugger } from '@/components/LLMPromptDebugger';
+import { ContextNotesPanel } from '@/components/ContextNotesPanel';
 import type { BloodPressureData } from '@/lib/types/metrics';
 
 export default function Home() {
@@ -39,6 +41,8 @@ export default function Home() {
     endDate: dateRange?.end ?? '',
     enabled: !!dateRange,
   });
+
+  const { notes: contextNotes, createNote: createContextNote, deleteNote: deleteContextNote, isLoading: isContextLoading } = useContextNotes();
 
   return (
     <div className="flex flex-col flex-1 bg-gray-50">
@@ -103,9 +107,24 @@ export default function Home() {
           onDeleteDiary={deleteDiary}
         />
 
+        {/* General Context */}
+        {!isLoading && data.length > 0 && (
+          <ContextNotesPanel
+            notes={contextNotes}
+            onCreate={createContextNote}
+            onDelete={deleteContextNote}
+            isLoading={isContextLoading}
+          />
+        )}
+
         {/* LLM Prompt Debugger */}
         {!isLoading && data.length > 0 && (
-          <LLMPromptDebugger readings={data} dayCount={dayCount} diaryEntries={diaryEntries} />
+          <LLMPromptDebugger
+            readings={data}
+            dayCount={dayCount}
+            diaryEntries={diaryEntries}
+            contextNotes={contextNotes}
+          />
         )}
 
         {/* Disclaimer footer */}

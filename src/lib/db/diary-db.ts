@@ -38,6 +38,17 @@ async function initDb(): Promise<Database> {
     );
   `);
 
+  instance.run(`
+    CREATE TABLE IF NOT EXISTS context_notes (
+      id TEXT PRIMARY KEY,
+      userId TEXT NOT NULL DEFAULT 'default',
+      text TEXT NOT NULL,
+      orderIdx INTEGER DEFAULT 0,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL
+    );
+  `);
+
   saveDb(instance);
   return instance;
 }
