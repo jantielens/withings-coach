@@ -97,3 +97,36 @@
 **Orchestration log:** `.squad/orchestration-log/2026-04-06T19-25-kelso-visualization-clinical.md`  
 **Decision document:** Merged into `.squad/decisions.md` (Visualization Decisions section)
 
+
+## LLM Workshop — Clinical Opportunities Brainstorm (2026-04-07)
+
+**Session:** Design Thinking Workshop — LLM Integration Roadmap  
+**Task:** Brainstorm 12 clinical LLM opportunities for health coaching and diagnostics  
+**Outcome:** ✅ SUCCESS
+
+**12 Clinical Opportunities Identified:**
+1. Medication Adherence & Effectiveness (before/after analysis)
+2. Circadian Rhythm Analysis (morning vs. evening patterns)
+3. Variability Index (BP stability scoring)
+4. White Coat Effect Detector (office vs. home comparisons)
+5. Lifestyle-BP Correlation (stress, exercise, diet links)
+6. Hypotension Risk Alert (low BP thresholds)
+7. Variability Stability Score (BPV tracking)
+8. Comparative Period Analysis (30-day trend summaries)
+9. Emergency Threshold Monitor (≥180/120 crisis detection)
+10. Non-Dipping Pattern Alert (night-time BP)
+11. Personalized Target Tracking (goal-based coaching)
+12. Diary Entry Intelligence Assistant (real-time insights during logging)
+
+**Integration:** All 12 merged with JD's 12 technical opportunities by Cox into a 4-tier roadmap
+
+**Key Clinical Principles:**
+- Code = Deterministic (stats, thresholds), LLM = Narrative
+- Safety-critical logic stays hardcoded; LLM adds context only
+- Emergency alerts at 180+/120+ trigger hardcoded guidance; LLM adds context but never overrides
+- Diary parsing = Structured events only (medications); no open-ended symptom interpretation
+
+**Deliverable:** Cox's 4-tier roadmap merged into .squad/decisions.md
+
+**Orchestration log:** .squad/orchestration-log/2026-04-07T15-24-53Z-kelso-llm-workshop.md
+

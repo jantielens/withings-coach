@@ -738,3 +738,188 @@ These principles should carry forward to future metric summaries (HR zones, etc.
 **Status:** Implemented ✓
 
 ---
+
+---
+
+## LLM Integration Workshop — 4-Tier Roadmap
+
+**Decision Date:** 2026-04-07  
+**Decision Maker:** Cox (Lead/Architect)  
+**Contributors:** Kelso (Medical Advisor), JD (AI Engineer)  
+**Status:** FINAL — Ready for Implementation
+
+### Executive Summary
+
+We evaluated 24 LLM integration opportunities (12 clinical from Kelso + 12 technical from JD). After merging overlaps and applying clinical value × technical feasibility × strategic fit criteria, **we have 4 Tier 1 features to build immediately** and a clear foundation layer to enable them.
+
+**The Pattern:** Code handles deterministic logic (stats, thresholds, categorization). LLM handles narrative generation, pattern explanation, and correlation insights. Cache aggressively. Fail gracefully.
+
+**Kill Signal:** If it requires embeddings, RAG infrastructure, or conversational state management — **not now**. Single-shot prompt → structured response only.
+
+See full document: `.squad/decisions/inbox/cox-llm-workshop-synthesis.md` (comprehensive implementation details, cost model, architecture principles).
+
+---
+
+## UI Decisions — Timeline & Component Evolution
+
+### Decision: Condensed Timeline View as Default
+
+**Author:** Elliot (Frontend Dev)  
+**Date:** 2025-07-15  
+**Status:** Implemented
+
+**Context:** With 30 days of data, the previous full-card-per-day layout was too verbose. Jan requested a condensed timeline where each day is a single scannable line, expandable on click.
+
+**Decisions Made:**
+1. Condensed row is the default, expanded card on click — one compact line per day with dot, date, distribution bar, dominant category badge, reading count, and chevron.
+2. Dot colored by worst category, badge shows dominant category — dual signals for "worst case" and "typical" in one line.
+3. Auto-expand high-risk days (clinical safety rule) — Grade 2+, Grade 3, or Isolated Systolic days start expanded.
+4. Low-confidence fade for n<3 readings — 70% opacity visual signal for thin data.
+5. Multi-color distribution bar — stacked category colors, not single worst-category color (per Jan's preference).
+6. Expanded state lifted to Timeline parent — enables future "expand/collapse all" controls.
+7. 30-day default range — condensed view makes this scannable.
+
+**Files Changed:**
+- `src/lib/ui/category-config.ts` — Added `dominantCategory()`, `hasHighRiskCategory()`
+- `src/components/DaySummary.tsx` — Condensed + expanded dual mode
+- `src/components/Timeline.tsx` — Expanded state management, auto-expand logic
+- `src/app/page.tsx` — 30-day default, updated subtitle
+
+---
+
+### Decision: Outlined Dot Markers for TimelineBar
+
+**Date:** 2025-07-18  
+**Author:** Elliot (Frontend)  
+**Status:** Implemented
+
+**Context:** The TimelineBar used thin 2px white vertical lines as tick marks to show exact reading times. Jan evaluated three visual options and chose **Option 3: White Dot with Dark Border**.
+
+**Decision:** Replaced tick lines with `w-1.5 h-1.5 rounded-full bg-white border border-gray-800` dots, centered vertically on the bar with `z-10` to layer above colored segments. `pointer-events-none` preserved tooltip fire-through.
+
+**Rationale:**
+- Dots are visually distinct from the colored bar without being harsh as full-height lines
+- Dark border ensures visibility against both light and dark segment colors
+- 6px size avoids clutter with multiple readings, large enough to see
+
+---
+
+### Decision: Dual-Bar CSS Grid Layout for Collapsed Day Summary
+
+**Author:** Elliot (Frontend Developer)  
+**Date:** 2025-07-18  
+**Status:** Implemented
+
+**Context:** Cox recommended adding a compact RangeBar alongside the TimelineBar in the collapsed day row for at-a-glance systolic/diastolic spread visibility.
+
+**Changes:**
+1. Collapsed Row: Flex → CSS Grid — 6-column layout: day label | TimelineBar | RangeBar | badge | warning icon | chevron
+2. RangeBar `compact` prop — `compact={true}`: `h-2` height (matches TimelineBar), no tick labels; `compact={false}`: original `h-1.5` with labels (expanded section)
+
+---
+
+### Decision: Ideal BP Reference Markers on RangeBar
+
+**From:** Elliot (Frontend Developer)  
+**Date:** 2025-07-24  
+**Status:** Implemented
+
+**Context:** Kelso identified 120/80 mmHg as ideal per ESC/ESH 2018. Users needed visual reference for where "ideal" sits on the range bar.
+
+**Decision:** Add two subtle 1px vertical reference lines at 120 mmHg (systolic) and 80 mmHg (diastolic) on every RangeBar instance. Lines are `bg-gray-400/40` — visible but not dominant. Render behind colored systolic/diastolic segments.
+
+**Rationale:**
+- **Subtle > Bold** — Reference lines don't compete with colored reading segments
+- **Same math, guaranteed alignment** — Uses identical `((value - scaleMin) / scaleRange) * 100` formula as bar segments
+- **No tooltip on 1px lines** — Scale header labels + ZoneLegend disclaimer provide context
+- **Disclaimer in ZoneLegend** — "Target: 120/80 mmHg · Consult your doctor for personal goals"
+
+---
+
+### Decision: "Less Is More" — Timeline Row Simplification
+
+**From:** Elliot (Frontend Developer)  
+**Date:** 2025-07-22  
+**Status:** ✅ Implemented
+
+**Context:** The collapsed day summary had 6 grid columns (date, timeline bar, range bar, badge label, warning icon, chevron). The badge text duplicated information already encoded by:
+- Tier-1 dot color (worst category)
+- TimelineBar segment colors (per-reading categories)
+- ZoneLegend at top of timeline
+
+The separate warning icon added 20px reserved space on every row, even safe days.
+
+**Decision:**
+1. Remove badge text column — Severity is visually encoded three ways already
+2. Merge warning into dot — Grade 2+ days get slightly larger dot (`w-5 h-5`) with red ring (`ring-offset-1 ring-red-300`) instead of separate icon
+
+---
+
+### Decision: LLM Prompt Debugger
+
+**From:** Elliot (Frontend Developer)  
+**Date:** 2025-07-25  
+**Status:** Implemented
+
+**What:** Added an "AI Prompt Builder" — a collapsible debug panel at the bottom of the dashboard that generates a copyable LLM prompt containing the user's blood pressure data in a structured format. Designed for pasting into ChatGPT, Copilot, or any AI assistant.
+
+**Files Created/Modified:**
+- `src/lib/llm-prompt/prompt-builder.ts` — Pure function `buildBPPrompt()` assembling 4-section prompt (Role, Goal with ESC/ESH reference, Markdown data table, Output format + disclaimer)
+- `src/components/LLMPromptDebugger.tsx` — Collapsible UI with copy-to-clipboard, token estimate, read-only textarea
+- `src/app/page.tsx` — Integrated between Timeline and disclaimer footer
+
+**Design Decisions:**
+1. Pure function in `src/lib/` — Zero UI dependencies; reusable by future API route or server-side agent
+2. Collapsed by default — Debug-tool aesthetic (gray border, monospace, small text) keeps it unobtrusive
+
+---
+
+## Backend Decisions — Data & Storage
+
+### Decision: SQLite for Diary Storage
+
+**From:** Turk (Backend Developer)  
+**Date:** 2025-07-23  
+**Status:** Implemented
+
+**Context:** Users need ability to add, edit, and review diary notes for any date (past, present, future) in their health timeline. Notes provide context for LLM analysis and doctor view.
+
+**Decision:** Use **better-sqlite3** (embedded SQLite) for diary persistence with service layer and REST API.
+
+**Key Choices:**
+1. **SQLite over external DB** — Zero infrastructure, synchronous API, single-file database. Perfect for single-user health app. Migration to Postgres straightforward if needed later.
+2. **One entry per user per date** — `UNIQUE(userId, date)` constraint. Upsert semantics on POST — simpler API, no duplicate management.
+3. **Preserve `createdAt` on upsert** — INSERT OR REPLACE would reset columns. Check for existing row, carry forward `createdAt` so original timestamp survives edits.
+4. **DB file in `data/diary.db`** — Project root, gitignored. Auto-creates directory on first access.
+
+---
+
+## LLM Prompt Engineering
+
+### Decision: LLM Prompt Optimization — General Context Underweighting
+
+**From:** Laverne (AI/Prompt Engineer SME)  
+**Date:** 2025-07-26  
+**Status:** Implemented
+
+**Problem:** The generated LLM prompt includes a "General Context" section with patient medical records (Dutch-language cardiologist notes, medications, diagnoses). LLMs were consistently ignoring or underweighting this section, producing generic analyses not referencing patient's specific situation.
+
+**Root Cause:**
+1. No priority signal — plain header `## General Context` without importance instruction
+2. No multilingual instruction — English prompt with Dutch context; LLM may not deeply parse foreign-language embedded content
+3. "Lost in the middle" effect — Context sat between Goal and 100+ row data table; research shows LLMs attend most to content at start/end
+4. Output format gap — 5 requested output sections never asked LLM to reference medical records
+
+**Solution:** See full implementation in `.squad/decisions/inbox/laverne-prompt-optimization.md`
+
+---
+
+## User Directives
+
+### 2026-04-06T19:41: Remove Sparklines from UI
+
+**By:** Jan Tielens (via Copilot)  
+**What:** Remove sparklines from the UI — they don't add value and clutter the interface.  
+**Why:** User request — captured for team memory  
+**Status:** Pending implementation
+

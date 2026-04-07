@@ -19,3 +19,73 @@
 ## Learnings
 
 _No learnings yet — project just started._
+
+## LLM Workshop — Technical Opportunities Brainstorm (2026-04-07)
+
+**Session:** Design Thinking Workshop — LLM Integration Roadmap  
+**Task:** Brainstorm 12 technical LLM opportunities for health data analysis and coaching  
+**Outcome:** ✅ SUCCESS
+
+**12 Technical Opportunities Identified:**
+1. Smart Trend Narrator (comparative period analysis)
+2. Diary Entry Intelligence Assistant (real-time suggestions)
+3. Time-of-Day Pattern Detector (circadian rhythm + variability)
+4. Anomaly Detector (unusual readings flagged with context)
+5. Risk Alert Prioritizer (triage guidance for emergency thresholds)
+6. Medication Correlation Analyzer (before/after med changes)
+7. Plain-Language Clinical Explainer (education on categories)
+8. Pre-Visit Summary Report (PDF export with physician narrative)
+9. Conversational Query Interface (chatbot for data exploration)
+10. Lifestyle-BP Correlation Tracker (stress/exercise/caffeine links)
+11. Progressive Context Enrichment (RAG + embedding similarity)
+12. Prompt Optimization Dashboard (dev tool for refining LLM prompts)
+
+**Integration:** All 12 merged with Kelso's 12 clinical opportunities by Cox into a **4-tier roadmap**.
+
+**Key Technical Decisions (from Cox synthesis):**
+- **Foundation Layer** (prerequisite for all Tier 1-2 features): API route `/api/llm/analyze`, LLM client (GPT-4o-mini), SQLite cache layer, Zod schemas, disclaimer injection, data quality guards
+- **Tier 1 Architecture:** Code-driven + LLM-narrative hybrid (code computes stats, LLM narrates insights)
+- **Caching Strategy:** 24h for narratives, 1h for alerts, aggressive invalidation on data change
+- **Kills:** Conversational interface (overkill for MVP), RAG embeddings (over-engineered for 100KB data), full diary NLP (safety risk)
+
+**Cost Model:** ~$185/month for 100 users at full feature set; ~$0.90/user/month with 50% cache hit rate.
+
+**Deliverable:** Cox's 4-tier roadmap merged into `.squad/decisions.md`
+
+**Orchestration log:** `.squad/orchestration-log/2026-04-07T15-24-53Z-jd-llm-workshop.md`
+
+
+## LLM Workshop — Technical Opportunities Brainstorm (2026-04-07)
+
+**Session:** Design Thinking Workshop — LLM Integration Roadmap  
+**Task:** Brainstorm 12 technical LLM opportunities for health data analysis and coaching  
+**Outcome:** ✅ SUCCESS
+
+**12 Technical Opportunities Identified:**
+1. Smart Trend Narrator (comparative period analysis)
+2. Diary Entry Intelligence Assistant (real-time suggestions)
+3. Time-of-Day Pattern Detector (circadian rhythm variability)
+4. Anomaly Detector (unusual readings flagged with context)
+5. Risk Alert Prioritizer (triage guidance for emergencies)
+6. Medication Correlation Analyzer (before/after med changes)
+7. Plain-Language Clinical Explainer (education on categories)
+8. Pre-Visit Summary Report (PDF export with physician narrative)
+9. Conversational Query Interface (chatbot for exploration)
+10. Lifestyle-BP Correlation Tracker (stress/exercise/caffeine)
+11. Progressive Context Enrichment (RAG + embedding similarity)
+12. Prompt Optimization Dashboard (dev tool for LLM tuning)
+
+**Integration:** All 12 merged with Kelso's 12 clinical opportunities by Cox into a 4-tier roadmap
+
+**Key Technical Decisions:**
+- Foundation Layer: API route, LLM client (GPT-4o-mini), SQLite cache, Zod schemas, disclaimers
+- Tier 1 Architecture: Code-driven + LLM-narrative (code = stats, LLM = insights)
+- Caching: 24h narratives, 1h alerts, aggressive invalidation on data change
+- Deferred: Conversational UI (overkill), RAG (over-engineered), full NLP (unsafe)
+
+**Cost Model:** ~185/month for 100 users; ~0.90/user/month with caching
+
+**Deliverable:** Cox's 4-tier roadmap merged into .squad/decisions.md
+
+**Orchestration log:** .squad/orchestration-log/2026-04-07T15-24-53Z-jd-llm-workshop.md
+

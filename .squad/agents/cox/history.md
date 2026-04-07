@@ -67,3 +67,64 @@
 **Orchestration log:** `.squad/orchestration-log/2026-04-06T19-25-cox-visualization-synthesis.md`  
 **Decision document:** Merged into `.squad/decisions.md` (Visualization Decisions section)
 
+### 2025-01-27 — LLM Integration Workshop Synthesis
+
+**Session:** LLM Integration Strategy — Design Thinking Output Consolidation  
+**Task:** Synthesize 24 LLM integration ideas (12 clinical from Kelso + 12 technical from JD) into actionable roadmap  
+**Outcome:** ✅ SUCCESS
+
+**Core Pattern Established:**
+- **Code handles deterministic logic** (stats, thresholds, categorization)
+- **LLM handles narrative generation** (explanations, correlations, triage context)
+- **Cache aggressively** (SQLite-backed prompt hash caching, 24hr TTL)
+- **Fail gracefully** (LLM down ≠ app broken)
+
+**Merged Overlapping Ideas:**
+- Circadian analysis (Kelso #3 + JD #3) → Time-of-day pattern detector with hybrid code/LLM approach
+- Medication correlation (Kelso #2, #10 + JD #6) → Before/after segmentation + diary parsing
+- Emergency alerts (Kelso #9 + JD #5) → Threshold detection + LLM contextual triage
+- Trend summary (Kelso #8 + JD #1) → Comparative period analysis with narrative
+- Pre-visit report (Kelso #1 + JD #8) → PDF export (deferred to Tier 2)
+
+**Foundation Layer (Build First):**
+1. API route `/api/llm/analyze` — POST handler with rate limiting
+2. LLM client service — OpenAI GPT-4o-mini wrapper with retry logic
+3. Cache layer — SQLite `llm_responses` table with hash-based invalidation
+4. Structured output schemas — Zod validation for JSON mode responses
+5. Disclaimer injection — Auto-append safety warnings to all outputs
+6. Data quality guard — Refuse analysis if <10 readings in time window
+
+**Tier 1 (Build Now — 2 Weeks):**
+1. **Smart Trend Narrator** — One-click 30-day summary with previous period comparison ($1/month)
+2. **Emergency Risk Alert** — Hypertensive crisis detection (≥180/≥120) with LLM triage ($0.15/month)
+3. **Circadian Pattern Detector** — Morning/evening BP patterns with clinical interpretation ($0.40/month)
+4. **Medication Correlation Analyzer** — Before/after analysis for med changes with diary parsing ($0.30/month)
+
+**Total Tier 1 Cost:** $2-5/month single user, ~$90/month for 100 users (with 50% cache hit rate)
+
+**Tier 2 (Build Next):** Pre-visit PDF export, lifestyle-BP correlation, hypotension alerts, personalized targets
+
+**Tier 3 (Future):** Variability index, white coat detector, diary assistant, clinical explainer
+
+**Tier 4 (KILL):**
+- ❌ **Conversational query interface** — ChatGPT cosplay, zero MVP fit
+- ❌ **Progressive context enrichment (RAG)** — Embeddings overkill for 100KB data
+- ❌ **Full diary NLP** — Over-interpretation risk, unsafe symptom inference
+
+**Binding Decisions Made:**
+1. **Targeted diary parsing only** — Extract medication events (safe), no open-ended symptom inference (unsafe)
+2. **No conversational UI** — Single-shot analysis only, not building a chatbot
+3. **Hybrid emergency alerts** — Code triggers at threshold with hardcoded guidance, LLM adds context but never overrides
+
+**Architecture Fit:**
+- ✅ Reuses existing `HealthMetric<BPReading>` pattern — zero new core abstractions
+- ✅ Fits current `BPMetrics` class for stats computation
+- ✅ Integrates with existing diary system
+- ⚠️ Requires one new table: `medication_events` (links diary → extracted metadata)
+
+**Implementation Sequence:** Foundation (Week 1) → Trend + Alerts (Week 2) → Circadian (Week 3) → Medication (Week 4)
+
+**Decision document:** `.squad/decisions/inbox/cox-llm-workshop-synthesis.md`
+
+**Key Learning:** When synthesizing specialist outputs (clinical × technical), use scoring matrix (Clinical Value × Technical Feasibility × Strategic Fit) to force explicit trade-off reasoning. Features that score high on only one dimension get deferred or killed. All Tier 1 features scored high on all three axes.
+
