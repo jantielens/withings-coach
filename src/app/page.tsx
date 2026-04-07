@@ -20,6 +20,10 @@ export default function Home() {
 
   const averagedGroupCount = data.filter((g) => g.isGrouped).length;
 
+  const dayCount = data.length > 0
+    ? new Set(data.map((g) => g.timestamp.slice(0, 10))).size
+    : 30;
+
   return (
     <div className="flex flex-col flex-1 bg-gray-50">
       {/* Header */}
@@ -27,7 +31,7 @@ export default function Home() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-gray-900">Withings Coach</h1>
-            <p className="text-sm text-gray-500">Last 30 days</p>
+            <p className="text-sm text-gray-500">Last {dayCount} days</p>
           </div>
           <button
             onClick={refresh}
@@ -64,12 +68,12 @@ export default function Home() {
             <div className="h-4 w-32 bg-gray-200 rounded" />
           </div>
         ) : error ? null : (
-          <LatestReading reading={latestReading} />
+          <LatestReading reading={latestReading} dayCount={dayCount} />
         )}
 
         {/* Summary */}
         {!isLoading && !error && (
-          <SummaryCard summary={summary} averagedGroupCount={averagedGroupCount} />
+          <SummaryCard summary={summary} averagedGroupCount={averagedGroupCount} dayCount={dayCount} />
         )}
 
         {/* Timeline */}

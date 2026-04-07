@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Withings Coach",
-  description: "Your blood pressure timeline — last 7 days at a glance",
+  description: "Your blood pressure timeline — at a glance",
 };
 
 export default function RootLayout({

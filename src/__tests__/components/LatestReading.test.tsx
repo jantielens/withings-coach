@@ -22,7 +22,7 @@ function LatestReading({ reading }: LatestReadingProps) {
   if (!reading) {
     return (
       <div data-testid="empty-state">
-        No readings in the last 7 days. Take a measurement with your Withings device.
+        No readings in the last 30 days. Take a measurement with your Withings device.
       </div>
     );
   }
@@ -151,7 +151,7 @@ describe('LatestReading component', () => {
     it('shows empty state message when reading is null', () => {
       render(<LatestReading reading={null} />);
       expect(screen.getByTestId('empty-state')).toHaveTextContent(
-        'No readings in the last 7 days'
+        'No readings in the last 30 days'
       );
     });
 

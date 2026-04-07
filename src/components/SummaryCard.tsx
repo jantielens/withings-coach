@@ -5,9 +5,10 @@ import type { MetricSummary } from '@/lib/types/metrics';
 interface SummaryCardProps {
   summary: MetricSummary | null;
   averagedGroupCount?: number;
+  dayCount: number;
 }
 
-export function SummaryCard({ summary, averagedGroupCount = 0 }: SummaryCardProps) {
+export function SummaryCard({ summary, averagedGroupCount = 0, dayCount }: SummaryCardProps) {
   if (!summary || summary.count === 0) {
     return null;
   }
@@ -24,7 +25,7 @@ export function SummaryCard({ summary, averagedGroupCount = 0 }: SummaryCardProp
   return (
     <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-100">
       <p className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-4">
-        7-Day Summary
+        {dayCount}-Day Summary
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Average */}
@@ -63,8 +64,8 @@ export function SummaryCard({ summary, averagedGroupCount = 0 }: SummaryCardProp
           </p>
           <p className="text-xs text-gray-400 mt-1">
             {averagedGroupCount > 0
-              ? `${averagedGroupCount} averaged · over 7 days`
-              : 'over 7 days'}
+              ? `${averagedGroupCount} averaged · over ${dayCount} days`
+              : `over ${dayCount} days`}
           </p>
         </div>
       </div>

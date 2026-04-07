@@ -59,16 +59,17 @@ function IndividualReading({ reading, firstTimestamp }: {
 
 interface LatestReadingProps {
   reading: BloodPressureGroup | null;
+  dayCount: number;
 }
 
-export function LatestReading({ reading }: LatestReadingProps) {
+export function LatestReading({ reading, dayCount }: LatestReadingProps) {
   const [expanded, setExpanded] = useState(false);
 
   if (!reading) {
     return (
       <div className="rounded-2xl bg-white p-8 shadow-sm border border-gray-100 text-center">
         <div className="text-gray-400 text-lg">
-          No readings in the last 7 days
+          No readings in the last {dayCount} days
         </div>
         <p className="text-gray-400 text-sm mt-2">
           Take a measurement with your Withings device.
