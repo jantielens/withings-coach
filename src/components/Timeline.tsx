@@ -124,6 +124,38 @@ function TimelineContent({ readings }: { readings: BloodPressureGroup[] }) {
         <ZoneLegend />
       </div>
 
+      {/* Sticky scale header — aligns with day row grid columns */}
+      <div className="sticky top-16 z-40 bg-white/95 backdrop-blur-sm border-b border-gray-100 -mx-6 px-6 py-1">
+        <div className="relative ml-3">
+          <div className="relative flex gap-3">
+            {/* Spacer matching dot column width */}
+            <div className="flex-shrink-0 w-6" aria-hidden="true" />
+            {/* Grid matching day row columns */}
+            <div className="flex-1 min-w-0">
+              <div className="grid items-center gap-x-3 px-3 grid-cols-[100px_minmax(60px,1fr)_auto] md:grid-cols-[100px_minmax(60px,1fr)_minmax(60px,1fr)_auto]">
+                {/* Date column spacer */}
+                <div />
+                {/* Timeline bar scale: 0h — 12h — 24h */}
+                <div className="relative h-3 min-w-0">
+                  <span className="absolute left-0 text-[10px] text-gray-400 leading-none">0h</span>
+                  <span className="absolute left-1/2 -translate-x-1/2 text-[10px] text-gray-400 leading-none">12h</span>
+                  <span className="absolute right-0 text-[10px] text-gray-400 leading-none">24h</span>
+                </div>
+                {/* Range bar scale: 80 — 120 — 140 — 200 (hidden on mobile) */}
+                <div className="hidden md:block relative h-3 min-w-0">
+                  <span className="absolute left-0 text-[10px] text-gray-400 leading-none">80</span>
+                  <span className="absolute text-[10px] text-gray-400 leading-none" style={{ left: '33.3%', transform: 'translateX(-50%)' }}>120</span>
+                  <span className="absolute text-[10px] text-gray-400 leading-none" style={{ left: '50%', transform: 'translateX(-50%)' }}>140</span>
+                  <span className="absolute right-0 text-[10px] text-gray-400 leading-none">200</span>
+                </div>
+                {/* Chevron column spacer */}
+                <div />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Connected dot timeline */}
       <div className="relative ml-3">
         <div className="relative">

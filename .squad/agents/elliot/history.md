@@ -22,6 +22,28 @@
 
 ## Learnings
 
+### 2025-07-22 — "Less Is More" UI Simplifications
+
+- **Removed badge text column from collapsed rows**: The severity label ("Grade 1", "High Normal", etc.) was redundant — the tier-1 dot color, TimelineBar colors, and ZoneLegend already encode it. Deleted the `<span>` and its `110px` grid column. Also removed the separate `20px` warning icon column.
+- **Merged warning signal into tier-1 dot**: For Grade 2+ / ISH days, the dot now grows from `w-4 h-4` to `w-5 h-5` and gets `ring-offset-1 ring-red-300` — a subtle red ring that draws the eye without a separate icon. Conditional className string handles both states.
+- **Grid simplified from 6 → 4 columns (desktop)**: `grid-cols-[100px_minmax(60px,1fr)_minmax(60px,1fr)_auto]` — date, timeline bar, range bar, chevron. Both bars now get `1fr` (equal width, fill available space). Mobile drops the range bar column as before.
+- **Added rich `aria-label` to tier-1 dot**: `formatDayLong()` helper provides "Monday, April 6" format. Combined with worst category label and reading count for screen readers. Native `title` tooltip kept for mouse users.
+- **Sticky scale header row in Timeline.tsx**: Thin ruler row with `0h / 12h / 24h` labels over the timeline bar column and `80 / 120 / 140 / 200` (ESC thresholds) over the range bar column. Uses `sticky top-16 z-40` to stay visible under the page header. `bg-white/95 backdrop-blur-sm` for a subtle frosted effect. Range bar scale hidden on mobile.
+- **Removed `dominantCategory` import**: No longer needed in DaySummary since the badge column is gone. Only `worstCategory` and `hasHighRiskCategory` remain.
+- **No test changes needed**: All 65 existing tests pass — the changes are CSS/layout-only in DaySummary and Timeline, neither of which has dedicated tests.
+
+### 2025-07-22 — RangeBar Hover Tooltips
+
+- **Added React state-based tooltips to RangeBar**: Same pattern as TimelineBar — `useState<'sys' | 'dia' | null>` tracks which segment is hovered, `onMouseEnter`/`onMouseLeave` on each bar segment toggles it. Tooltip positioned `bottom-full mb-2` centered with `left-1/2 -translate-x-1/2`, `z-50`, and `pointer-events-none`.
+- **Overlap detection**: Added `rangesOverlap()` helper. When systolic and diastolic ranges overlap on the scale, hovering the systolic bar (which is rendered on top) shows both systolic and diastolic values. Diastolic-only tooltip shows when hovering non-overlapping diastolic areas.
+- **overflow-hidden → overflow-visible**: Changed the bar track container from `overflow-hidden` to `overflow-visible` so tooltips can render above the bar. Individual bar segments already had `rounded-full`, so visual appearance is unchanged.
+- **Works in compact mode**: Tooltips work in both `compact={true}` (collapsed day summary, h-2 bar) and normal mode (h-1.5 bar). No conditional logic needed — same hover behavior in both.
+
+### 2025-07-18 — TimelineBar Dot Markers
+
+- **Replaced tick marks with outlined dot markers**: Swapped the 2px white vertical lines in TimelineBar with small white circles (`w-1.5 h-1.5 rounded-full bg-white border border-gray-800`). Centered vertically with `top-1/2 -translate-y-1/2`, added `z-10` to sit above colored segments. Keeps `pointer-events-none` so tooltips from segments still work.
+- **Surgical CSS-only change**: No logic, props, or data flow changed — just the tick `<div>` className swap. Build passed on first attempt.
+
 ### 2025-07-15 — ESC/ESH 2018 + ReadingGroup UI
 
 - **Category config extracted to shared util**: Moved `categoryConfig` from being duplicated in LatestReading and TimelineEntry into `src/lib/ui/category-config.ts`. Both components now import from there. Future components should do the same.
@@ -230,3 +252,17 @@ Timeline component accepts optional date range filter for future coaching agent 
 - **Simplified segment algorithm**: Removed `MIN_WIDTH_PCT`, gap calculations, and overlap clamping. Midpoint math naturally produces non-overlapping, contiguous segments that tile the full 0–100% range.
 - **Rounded corners per-segment**: First segment gets `rounded-l-full`, last gets `rounded-r-full`, single reading gets `rounded-full`. Middle segments have no rounding — they abut cleanly.
 - **Tooltips preserved**: Same hover tooltip pattern (React `useState` for `hoveredId`) with BP values, time, pulse, and ESC category label.
+
+### 2025-07-18 — TimelineBar Gap & Tooltip Fixes
+
+- **Subpixel gap elimination**: Added 0.15% width overlap to every non-last segment. Browsers round percentage-based widths to device pixels differently, leaving hairline white lines between absolutely-positioned segments. The tiny overlap ensures adjacent segments always touch, with later segments rendering on top via DOM order. Last segment keeps its exact width to avoid overflowing the bar.
+- **Tooltip arrow aligned to dot marker**: Tooltip was centered on the segment (`left-1/2 -translate-x-1/2`), but the dot marker sits at the reading's actual timestamp position within the segment. Computed `dotRelativePct` — the tick position relative to the segment's left edge — and used that as the tooltip's `left` style. The arrow `<div>` inside still uses `left-1/2 -translate-x-1/2` relative to the tooltip box, so the arrow always points straight down at the dot.
+
+### 2025-07-18 — Dual-Bar CSS Grid Layout
+
+- **Flex → CSS Grid for collapsed row**: Replaced `flex items-center gap-3 flex-wrap` with a 6-column CSS Grid (`grid-cols-[100px_minmax(60px,140px)_minmax(60px,1fr)_110px_20px_auto]`). Columns: day label, TimelineBar, RangeBar, badge, warning icon slot, chevron. Grid ensures all columns align perfectly across days — no flex wrapping issues.
+- **Responsive grid template**: Mobile uses 5-column grid (no RangeBar column) via `grid-cols-[100px_minmax(60px,1fr)_110px_20px_auto]`. Desktop (md+) adds the RangeBar column. The RangeBar `<div>` itself uses `hidden md:block` — CSS Grid skips `display:none` items, so remaining items flow into the 5 mobile columns naturally.
+- **RangeBar `compact` prop**: Added boolean prop. `compact=true`: `h-2` bar height (matches TimelineBar), no tick labels below. `compact=false` (default): original `h-1.5` with tick labels. Expanded section keeps the full RangeBar with tick labels for detail.
+- **Warning icon slot always reserved**: Changed from conditional rendering (`{isHighRisk && <span>}`) to always-rendered `<div>` wrapper with conditional content. The 20px grid column is always present, preventing layout shift when warning appears/disappears.
+- **Container widened**: `max-w-3xl` → `max-w-4xl` in both header and main content areas of `page.tsx`. Provides breathing room for the dual-bar layout.
+- **Build & Tests**: ✅ TypeScript clean, 65 tests passing, zero new dependencies.

@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReadingGroup, BloodPressureData } from '@/lib/types/metrics';
-import { categoryConfig, worstCategory, dominantCategory, hasHighRiskCategory } from '@/lib/ui/category-config';
+import { categoryConfig, worstCategory, hasHighRiskCategory } from '@/lib/ui/category-config';
 import { TimelineBar } from './TimelineBar';
 import { RangeBar } from './RangeBar';
 import { TimelineEntry } from './TimelineEntry';
@@ -12,6 +12,14 @@ function formatDayShort(isoTimestamp: string): string {
   return new Date(isoTimestamp).toLocaleDateString('en-US', {
     weekday: 'short',
     month: 'short',
+    day: 'numeric',
+  });
+}
+
+function formatDayLong(isoTimestamp: string): string {
+  return new Date(isoTimestamp).toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
     day: 'numeric',
   });
 }
@@ -34,9 +42,7 @@ interface DaySummaryProps {
 export function DaySummary({ dayReadings, isFirst, isLast, expanded, onToggle }: DaySummaryProps) {
   const allCategories = dayReadings.map((r) => r.average.category);
   const worst = worstCategory(allCategories);
-  const dominant = dominantCategory(allCategories);
   const worstConfig = categoryConfig[worst];
-  const dominantConfig = categoryConfig[dominant];
   const isHighRisk = hasHighRiskCategory(allCategories);
 
   const systolics = dayReadings.map((r) => r.average.systolic);
@@ -49,6 +55,7 @@ export function DaySummary({ dayReadings, isFirst, isLast, expanded, onToggle }:
   const groupCount = dayReadings.length;
   const lowConfidence = groupCount < 3;
   const dayLabel = formatDayShort(dayReadings[0].timestamp);
+  const dayLabelLong = formatDayLong(dayReadings[0].timestamp);
 
   const handleToggle = () => onToggle();
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -70,8 +77,9 @@ export function DaySummary({ dayReadings, isFirst, isLast, expanded, onToggle }:
             <div className="flex-1 w-0.5 bg-gray-300" aria-hidden="true" />
           )}
           <div
-            className={`flex-shrink-0 w-4 h-4 rounded-full ${worstConfig.dotColor} ring-2 ring-white shadow-sm z-10 transition-transform duration-200 group-hover:scale-110`}
+            className={`flex-shrink-0 rounded-full ${worstConfig.dotColor} ring-2 ring-white shadow-sm z-10 transition-transform duration-200 group-hover:scale-110 ${isHighRisk ? 'w-5 h-5 ring-offset-1 ring-red-300' : 'w-4 h-4'}`}
             title={worstConfig.label}
+            aria-label={`${dayLabelLong}: ${worstConfig.label}, ${groupCount} reading${groupCount !== 1 ? 's' : ''}`}
           />
           {isLast && !expanded ? (
             <div className="flex-1" />
@@ -82,58 +90,37 @@ export function DaySummary({ dayReadings, isFirst, isLast, expanded, onToggle }:
 
         {/* Content area: condensed header + range bar (no card frame — parent timeline card wraps everything) */}
         <div className={`flex-1 min-w-0 py-0.5 ${lowConfidence ? 'opacity-70' : ''}`}>
-          {/* Condensed row header */}
+          {/* Condensed row header — CSS Grid for aligned dual-bar layout */}
           <div
-            className="flex items-center gap-3 py-2 px-3 cursor-pointer group flex-wrap"
+            className="grid items-center gap-x-3 py-2 px-3 cursor-pointer group grid-cols-[100px_minmax(60px,1fr)_auto] md:grid-cols-[100px_minmax(60px,1fr)_minmax(60px,1fr)_auto]"
             onClick={handleToggle}
             role="button"
             tabIndex={0}
             aria-expanded={expanded}
-            aria-label={`${dayLabel}: ${dominantConfig.label}, ${groupCount} readings${isHighRisk ? ', high risk' : ''}${expanded ? ', expanded' : ''}`}
+            aria-label={`${dayLabel}: ${worstConfig.label}, ${groupCount} reading${groupCount !== 1 ? 's' : ''}${isHighRisk ? ', high risk' : ''}${expanded ? ', expanded' : ''}`}
             onKeyDown={handleKeyDown}
           >
             {/* Day label */}
-            <span className="text-sm font-semibold text-gray-800 flex-shrink-0 w-[100px]">
+            <span className="text-sm font-semibold text-gray-800 truncate">
               {dayLabel}
             </span>
 
-            {/* Category distribution bar (tick marks show individual readings) */}
-            <div className="flex-1 min-w-[60px] max-w-[140px]">
+            {/* 24h timeline bar (tick marks show individual readings) */}
+            <div className="min-w-0">
               <TimelineBar readings={dayReadings} />
             </div>
 
-            {/* Dominant category text */}
-            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium flex-shrink-0 ${dominantConfig.classes}`}>
-              {dominantConfig.label}
-            </span>
-
-            {/* Warning icon for high-risk days — far right */}
-            {isHighRisk && (
-              <span
-                className="flex-shrink-0 w-5 h-5 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xs font-bold"
-                title={`Contains ${worstConfig.label} readings — review recommended`}
-                aria-label="High risk day"
-              >
-                !
-              </span>
-            )}
+            {/* RangeBar (SYS/DIA spread) — hidden on mobile, visible md+ */}
+            <div className="hidden md:block min-w-0">
+              <RangeBar compact sysMin={sysMin} sysMax={sysMax} diaMin={diaMin} diaMax={diaMax} />
+            </div>
 
             {/* Expand/collapse chevron */}
-            <span className="text-gray-400 text-sm flex-shrink-0 ml-auto" aria-hidden="true">
+            <span className="text-gray-400 text-sm" aria-hidden="true">
               {expanded ? '▲' : '▼'}
             </span>
           </div>
 
-          {/* Range bar (inside card, shown when expanded) */}
-          <div
-            className={`overflow-hidden transition-all duration-200 ease-in-out ${
-              expanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
-            }`}
-          >
-            <div className="px-3 pb-3">
-              <RangeBar sysMin={sysMin} sysMax={sysMax} diaMin={diaMin} diaMax={diaMax} />
-            </div>
-          </div>
         </div>
       </div>
 
