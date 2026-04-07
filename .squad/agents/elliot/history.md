@@ -213,3 +213,12 @@ Timeline component accepts optional date range filter for future coaching agent 
 - **Hover tooltips on bar segments**: Added `group/seg` + absolute-positioned tooltip to each CategoryDistribution segment. Shows category name, reading count, and BP values (sys/dia for each reading, "Avg: X/Y (×N)" for grouped). Uses `opacity-0 group-hover/seg:opacity-100 transition-opacity` — zero dependencies. Required passing `readings?: BloodPressureGroup[]` prop from DaySummary so the component has access to actual BP data per segment.
 - **Key pattern**: Tailwind's `group/{name}` modifier enables nested hover targets — essential when the bar is inside a larger clickable area that also uses `group`.
 
+### 2025-07-16 — 24-Hour Timeline Bar (Replaced CategoryDistribution)
+
+- **CategoryDistribution → TimelineBar**: Completely reworked the day summary bar from category-proportion segments to a 24-hour timeline. Each reading group is now positioned by its actual timestamp (`minutesOfDay / 1440 * 100` = left %), not by category share. Gray background (`bg-gray-200`) represents times with no data.
+- **Tooltip fix**: Old tooltips didn't show because the bar container had `overflow-hidden` (needed for `rounded-full`). New component uses `overflow-visible` on the bar container plus React state (`onMouseEnter`/`onMouseLeave`) for conditional tooltip rendering instead of CSS-only `group-hover` — more reliable, especially inside nested clickable areas.
+- **Segment positioning algorithm**: `buildSegments()` sorts readings by time, calculates `leftPct` from minutes-of-day, and `widthPct` as `max(MIN_WIDTH_PCT=3%, group span)`. Clamps width to avoid overlapping the next segment (leaves 0.3% gap). Tick marks within grouped segments use flex + absolute `w-[2px] bg-white` dividers.
+- **Tooltip content**: Shows time, BP values (with "Avg of N:" prefix for grouped), pulse, and ESC category label. Uses `z-50` for visibility above all other elements.
+- **Files**: Created `src/components/TimelineBar.tsx`, updated `src/components/DaySummary.tsx` import, deleted `src/components/CategoryDistribution.tsx`.
+- **Build & Tests**: ✅ TypeScript clean, 65 tests passing, zero new dependencies.
+

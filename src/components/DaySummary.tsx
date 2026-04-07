@@ -2,7 +2,7 @@
 
 import type { ReadingGroup, BloodPressureData } from '@/lib/types/metrics';
 import { categoryConfig, worstCategory, dominantCategory, hasHighRiskCategory } from '@/lib/ui/category-config';
-import { CategoryDistribution } from './CategoryDistribution';
+import { TimelineBar } from './TimelineBar';
 import { RangeBar } from './RangeBar';
 import { TimelineEntry } from './TimelineEntry';
 
@@ -99,7 +99,7 @@ export function DaySummary({ dayReadings, isFirst, isLast, expanded, onToggle }:
 
             {/* Category distribution bar (tick marks show individual readings) */}
             <div className="flex-1 min-w-[60px] max-w-[140px]">
-              <CategoryDistribution categories={allCategories} readings={dayReadings} />
+              <TimelineBar readings={dayReadings} />
             </div>
 
             {/* Dominant category text */}
