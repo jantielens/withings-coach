@@ -222,3 +222,11 @@ Timeline component accepts optional date range filter for future coaching agent 
 - **Files**: Created `src/components/TimelineBar.tsx`, updated `src/components/DaySummary.tsx` import, deleted `src/components/CategoryDistribution.tsx`.
 - **Build & Tests**: ✅ TypeScript clean, 65 tests passing, zero new dependencies.
 
+### 2025-07-16 — Midpoint-Split (Voronoi) TimelineBar Coloring
+
+- **Replaced positioned-segment approach with midpoint-split**: Old algorithm placed each reading as a small colored segment at its timestamp position with gray (`bg-gray-200`) background for gaps. New algorithm fills the ENTIRE bar — each reading "owns" the time from the midpoint with its previous neighbor to the midpoint with its next neighbor. No gray segments remain.
+- **First/last reading extension**: First reading extends backward to midnight (00:00), last reading extends forward to end of day (23:59). This makes single-reading days fully colored instead of a tiny dot on gray.
+- **Tick marks as honesty signal**: Thin white vertical lines (`w-[2px] bg-white`) rendered at each reading's exact timestamp position using absolute positioning. These overlay the colored segments and show users where actual measurements happened vs. extrapolated color. Rendered with `pointer-events-none` so they don't interfere with segment hover.
+- **Simplified segment algorithm**: Removed `MIN_WIDTH_PCT`, gap calculations, and overlap clamping. Midpoint math naturally produces non-overlapping, contiguous segments that tile the full 0–100% range.
+- **Rounded corners per-segment**: First segment gets `rounded-l-full`, last gets `rounded-r-full`, single reading gets `rounded-full`. Middle segments have no rounding — they abut cleanly.
+- **Tooltips preserved**: Same hover tooltip pattern (React `useState` for `hoveredId`) with BP values, time, pulse, and ESC category label.

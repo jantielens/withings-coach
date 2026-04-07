@@ -7,7 +7,6 @@ import { categoryConfig } from '@/lib/ui/category-config';
 type BloodPressureGroup = ReadingGroup<BloodPressureData>;
 
 const MINUTES_IN_DAY = 24 * 60;
-const MIN_WIDTH_PCT = 3; // Minimum segment width (~43 min visual)
 
 function minutesOfDay(isoTimestamp: string): number {
   const d = new Date(isoTimestamp);
@@ -22,50 +21,57 @@ function formatTime(isoTimestamp: string): string {
   });
 }
 
-interface TimelineSegment {
+interface MidpointSegment {
   group: BloodPressureGroup;
   leftPct: number;
   widthPct: number;
 }
 
-function buildSegments(readings: BloodPressureGroup[]): TimelineSegment[] {
-  if (readings.length === 0) return [];
+interface TickMark {
+  group: BloodPressureGroup;
+  positionPct: number;
+}
+
+/**
+ * Midpoint-split (Voronoi) algorithm: each reading owns the time from
+ * the midpoint with its previous neighbor to the midpoint with its next
+ * neighbor. First reading extends back to midnight, last extends to end
+ * of day. The entire bar is fully colored — no gray gaps.
+ */
+function buildMidpointSegments(
+  readings: BloodPressureGroup[]
+): { segments: MidpointSegment[]; ticks: TickMark[] } {
+  if (readings.length === 0) return { segments: [], ticks: [] };
 
   const sorted = [...readings].sort(
     (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
   );
 
-  const segments: TimelineSegment[] = [];
+  const minutePositions = sorted.map((g) => minutesOfDay(g.timestamp));
 
-  for (let i = 0; i < sorted.length; i++) {
-    const group = sorted[i];
-    const startMinutes = minutesOfDay(group.timestamp);
-    const leftPct = (startMinutes / MINUTES_IN_DAY) * 100;
-
-    // Width: span of readings within a group, or minimum for single readings
-    let widthPct = MIN_WIDTH_PCT;
-    if (group.isGrouped && group.readings.length > 1) {
-      const times = group.readings.map((r) => minutesOfDay(r.timestamp));
-      const spanPct = ((Math.max(...times) - Math.min(...times)) / MINUTES_IN_DAY) * 100;
-      widthPct = Math.max(MIN_WIDTH_PCT, spanPct);
-    }
-
-    // Don't overlap the next segment — leave a 0.3% gap for the tick mark
-    if (i < sorted.length - 1) {
-      const nextLeft = (minutesOfDay(sorted[i + 1].timestamp) / MINUTES_IN_DAY) * 100;
-      const maxAllowed = nextLeft - leftPct - 0.3;
-      if (maxAllowed > 0 && widthPct > maxAllowed) {
-        widthPct = Math.max(maxAllowed, 1);
-      }
-    }
-
-    // Don't exceed day bounds
-    widthPct = Math.min(widthPct, 100 - leftPct);
-
-    segments.push({ group, leftPct, widthPct });
+  // Calculate midpoints between consecutive readings
+  const midpoints: number[] = [];
+  for (let i = 0; i < sorted.length - 1; i++) {
+    midpoints.push((minutePositions[i] + minutePositions[i + 1]) / 2);
   }
 
-  return segments;
+  const segments: MidpointSegment[] = [];
+  const ticks: TickMark[] = [];
+
+  for (let i = 0; i < sorted.length; i++) {
+    const startMin = i === 0 ? 0 : midpoints[i - 1];
+    const endMin = i === sorted.length - 1 ? MINUTES_IN_DAY : midpoints[i];
+    const leftPct = (startMin / MINUTES_IN_DAY) * 100;
+    const widthPct = ((endMin - startMin) / MINUTES_IN_DAY) * 100;
+
+    segments.push({ group: sorted[i], leftPct, widthPct });
+    ticks.push({
+      group: sorted[i],
+      positionPct: (minutePositions[i] / MINUTES_IN_DAY) * 100,
+    });
+  }
+
+  return { segments, ticks };
 }
 
 interface TimelineBarProps {
@@ -73,31 +79,46 @@ interface TimelineBarProps {
 }
 
 /**
- * 24-hour timeline bar — each reading group is positioned by its
- * timestamp. Gray background = no data, colored segments = readings.
- * Hover a segment to see BP values, time, and category.
+ * 24-hour timeline bar using midpoint-split coloring. The entire bar is
+ * filled — each reading owns the region from its previous midpoint to
+ * its next midpoint. Thin white tick marks show exact measurement times.
  */
 export function TimelineBar({ readings }: TimelineBarProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const segments = useMemo(() => buildSegments(readings), [readings]);
+  const { segments, ticks } = useMemo(
+    () => buildMidpointSegments(readings),
+    [readings]
+  );
 
   if (readings.length === 0) return null;
 
   return (
     <div
-      className="relative h-2 rounded-full bg-gray-200 overflow-visible"
+      className="relative h-2 rounded-full overflow-visible"
       role="img"
       aria-label={`24-hour timeline: ${segments.length} reading${segments.length !== 1 ? ' groups' : ''}`}
     >
-      {segments.map((seg) => {
+      {/* Colored segments — fully cover the bar */}
+      {segments.map((seg, i) => {
         const config = categoryConfig[seg.group.average.category];
         const isHovered = hoveredId === seg.group.id;
         const readingCount = seg.group.readings.length;
 
+        // Round corners only on first/last segment ends
+        const isFirst = i === 0;
+        const isLast = i === segments.length - 1;
+        const roundedClass = isFirst && isLast
+          ? 'rounded-full'
+          : isFirst
+            ? 'rounded-l-full'
+            : isLast
+              ? 'rounded-r-full'
+              : '';
+
         return (
           <div
             key={seg.group.id}
-            className={`absolute top-0 h-full rounded-sm cursor-pointer ${config.barColor}`}
+            className={`absolute top-0 h-full cursor-pointer ${config.barColor} ${roundedClass}`}
             style={{
               left: `${seg.leftPct}%`,
               width: `${seg.widthPct}%`,
@@ -105,20 +126,7 @@ export function TimelineBar({ readings }: TimelineBarProps) {
             onMouseEnter={() => setHoveredId(seg.group.id)}
             onMouseLeave={() => setHoveredId(null)}
           >
-            {/* Tick marks between individual readings within a grouped segment */}
-            {readingCount > 1 && (
-              <div className="absolute inset-0 flex">
-                {Array.from({ length: readingCount }).map((_, i) => (
-                  <div key={i} className="flex-1">
-                    {i < readingCount - 1 && (
-                      <div className="absolute h-full w-[2px] bg-white" style={{ left: `${((i + 1) / readingCount) * 100}%` }} aria-hidden="true" />
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Tooltip — rendered conditionally via React state for reliability */}
+            {/* Tooltip */}
             {isHovered && (
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 pointer-events-none">
                 <div className="bg-gray-900 text-white text-xs rounded-md px-2.5 py-1.5 whitespace-nowrap shadow-lg">
@@ -143,6 +151,16 @@ export function TimelineBar({ readings }: TimelineBarProps) {
           </div>
         );
       })}
+
+      {/* Tick marks at exact reading positions */}
+      {ticks.map((tick) => (
+        <div
+          key={`tick-${tick.group.id}`}
+          className="absolute top-0 h-full w-[2px] bg-white pointer-events-none"
+          style={{ left: `${tick.positionPct}%` }}
+          aria-hidden="true"
+        />
+      ))}
     </div>
   );
 }
