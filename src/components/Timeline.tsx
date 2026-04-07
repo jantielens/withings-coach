@@ -128,28 +128,30 @@ function TimelineContent({ readings }: { readings: BloodPressureGroup[] }) {
       <div className="sticky top-16 z-40 bg-white/95 backdrop-blur-sm border-b border-gray-100 -mx-6 px-6 py-1">
         <div className="relative ml-3">
           <div className="relative flex gap-3">
+            {/* Spacer matching warning icon column */}
+            <div className="flex-shrink-0 w-5" aria-hidden="true" />
             {/* Spacer matching dot column width */}
             <div className="flex-shrink-0 w-6" aria-hidden="true" />
             {/* Grid matching day row columns */}
             <div className="flex-1 min-w-0">
-              <div className="grid items-center gap-x-3 px-3 grid-cols-[100px_minmax(60px,1fr)_auto] md:grid-cols-[100px_minmax(60px,1fr)_minmax(60px,1fr)_auto]">
+              <div className="grid items-center gap-x-10 px-3 grid-cols-[100px_minmax(60px,1fr)_auto] md:grid-cols-[100px_minmax(60px,1fr)_minmax(60px,1fr)_auto]">
                 {/* Date column spacer */}
                 <div />
                 {/* Timeline bar scale: 0h — 12h — 24h */}
                 <div className="relative h-3 min-w-0">
                   <span className="absolute left-0 text-[10px] text-gray-400 leading-none">0h</span>
                   <span className="absolute left-1/2 -translate-x-1/2 text-[10px] text-gray-400 leading-none">12h</span>
-                  <span className="absolute right-0 text-[10px] text-gray-400 leading-none">24h</span>
+                  <span className="absolute right-0 text-[10px] text-gray-400 leading-none text-right">24h</span>
                 </div>
-                {/* Range bar scale: 80 — 120 — 140 — 200 (hidden on mobile) */}
+                {/* Range bar scale: 60 — 120 — 140 — 200 (hidden on mobile) */}
                 <div className="hidden md:block relative h-3 min-w-0">
-                  <span className="absolute left-0 text-[10px] text-gray-400 leading-none">80</span>
-                  <span className="absolute text-[10px] text-gray-400 leading-none" style={{ left: '33.3%', transform: 'translateX(-50%)' }}>120</span>
-                  <span className="absolute text-[10px] text-gray-400 leading-none" style={{ left: '50%', transform: 'translateX(-50%)' }}>140</span>
-                  <span className="absolute right-0 text-[10px] text-gray-400 leading-none">200</span>
+                  <span className="absolute left-0 text-[10px] text-gray-400 leading-none whitespace-nowrap">60 mmHg</span>
+                  <span className="absolute text-[10px] text-gray-400 leading-none" style={{ left: '42.86%', transform: 'translateX(-50%)' }}>120</span>
+                  <span className="absolute text-[10px] text-gray-400 leading-none" style={{ left: '57.14%', transform: 'translateX(-50%)' }}>140</span>
+                  <span className="absolute right-0 text-[10px] text-gray-400 leading-none text-right">200</span>
                 </div>
-                {/* Chevron column spacer */}
-                <div />
+                {/* Chevron column spacer — invisible char so auto column matches day rows */}
+                <span className="text-gray-400 text-sm invisible" aria-hidden="true">▼</span>
               </div>
             </div>
           </div>
@@ -169,7 +171,7 @@ function TimelineContent({ readings }: { readings: BloodPressureGroup[] }) {
                 onToggle={() => toggleDay(dayKey)}
               />
               {idx < dayEntries.length - 1 && (
-                <div className="ml-[11px] w-0.5 h-4 bg-gray-300" aria-hidden="true" />
+                <div className="ml-[43px] w-0.5 h-4 bg-gray-300" aria-hidden="true" />
               )}
             </Fragment>
           ))}
