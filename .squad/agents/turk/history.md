@@ -17,6 +17,26 @@
 
 ## Learnings
 
+**2025-07-24 — Migrated from better-sqlite3 to sql.js (pure JS SQLite):**
+- `better-sqlite3` native C++ module kept failing with `NODE_MODULE_VERSION` mismatch and `ERR_DLOPEN_FAILED` in Next.js Turbopack. `serverExternalPackages` was a brittle workaround that broke across Node versions.
+- Switched to `sql.js` — SQLite compiled to JavaScript via Emscripten. Zero native bindings, always works.
+- **Critical discovery:** The default `sql.js` import uses WASM (`sql-wasm.js` + `sql-wasm.wasm`), but Turbopack rewrites the WASM file path to `/ROOT/node_modules/...` which doesn't exist at runtime. Fix: import `sql.js/dist/sql-asm.js` instead — pure asm.js, no WASM file needed.
+- sql.js is async to initialize (unlike better-sqlite3 which is synchronous). `getDb()` now returns `Promise<Database>`, and all diary-service functions are async.
+- sql.js doesn't auto-persist to disk. Implemented manual `saveDb()` that calls `db.export()` → `Buffer.from(data)` → `fs.writeFileSync()` after every write operation (upsert, delete).
+- sql.js uses positional params (arrays) not named params. Queries use `db.run(sql, [...params])` and `db.prepare()` + `stmt.bind([...])` + `stmt.step()` + `stmt.get()` + `stmt.free()`.
+- Singleton pattern uses a `dbReady` promise to prevent race conditions when multiple requests hit `getDb()` simultaneously during initialization.
+- Removed `serverExternalPackages: ['better-sqlite3']` from `next.config.ts` — no longer needed.
+- API contract unchanged — same endpoints, same request/response format. Frontend unaffected.
+
+**2025-07-23 — Diary Storage Backend (SQLite + Service + API):**
+- Built full diary CRUD stack: SQLite database (`better-sqlite3`), service layer, and REST API route.
+- Schema uses `UNIQUE(userId, date)` constraint — one diary entry per user per day, upsert semantics on POST.
+- Used `INSERT OR REPLACE` but preserved `createdAt` by checking for existing row first, so updates don't overwrite the original creation timestamp.
+- `better-sqlite3` is synchronous — no async overhead, perfect for Next.js API routes on server side.
+- DB file stored in `data/diary.db` (gitignored), auto-creates `data/` directory on first access. WAL mode enabled for concurrent read performance.
+- Integrated diary into prompt builder: optional `diaryEntries` parameter keeps backward compatibility with existing callers (LLMPromptDebugger passes 2 args, still works). Added "Patient Context" section and a "Diary" column in the data table.
+- API supports any date (past, present, future) — no restriction to "today only". Users can annotate historical days when reviewing their timeline.
+
 **2025-07-22 — Default Date Range Change (7 → 30 days):**
 - Changed `METRIC_DEFAULTS.defaultDays` from 7 to 30 in `src/config/metrics.ts` to support the new condensed timeline view. The route, service layer, and Withings adapter required zero structural changes — they're fully parameterized via `DateRange` and handle arbitrary volumes. Frontend can still override with `?from=...` query param (e.g., 7-day window for expanded mode). Single config line change, build passes.
 
@@ -79,6 +99,14 @@
 **API Contract Change:** Breaking change from HealthMetric[] to ReadingGroup[] (coordinated with Elliot)
 
 **Orchestration log:** `.squad/orchestration-log/2026-04-06T18-17-turk.md`
+
+## Completed Work (2025-07-23 — better-sqlite3 Fix)
+
+**Task:** Fix `ERR_DLOPEN_FAILED` error when loading the `better-sqlite3` native module.
+**Root Cause:** Next.js was webpack-bundling `better-sqlite3`, which breaks native C++ modules. The compiled `.node` binary can't survive webpack's module resolution.
+**Fix:** Added `serverExternalPackages: ['better-sqlite3']` to `next.config.ts`. This tells Next.js to load the module directly from `node_modules` at runtime instead of bundling it. Also rebuilt the native module with `npm rebuild better-sqlite3` to ensure it matches the current Node.js version.
+**Verification:** `npm run build` passes, `GET /api/diary` returns valid JSON response — no more `ERR_DLOPEN_FAILED`.
+**File Modified:** `next.config.ts`
 
 ## Phase 2 Backlog
 
