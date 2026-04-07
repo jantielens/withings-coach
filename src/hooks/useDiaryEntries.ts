@@ -40,7 +40,8 @@ export function useDiaryEntries({
         setEntries(new Map());
         return;
       }
-      const data: DiaryEntry[] = await response.json();
+      const json = await response.json();
+      const data: DiaryEntry[] = json.entries ?? [];
       const map = new Map<string, DiaryEntry>();
       for (const entry of data) {
         map.set(entry.date, entry);
