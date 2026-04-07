@@ -206,3 +206,10 @@ Timeline component accepts optional date range filter for future coaching agent 
 - **Layout math**: Dot column is `w-6` (24px), `items-center` positions the `w-0.5` (2px) line at `left: 11px`. This matches the inter-day connector at `ml-[11px]`. Tier-2 stubs (`w-3` = 12px) replace the `gap-3` (12px) from tier-1 rows, so content starts at the same 36px horizontal position.
 - **Expand/collapse preserved**: Range bar stays inside the card (day-level summary). Tier-2 section uses its own `max-h` + `opacity` transition wrapper outside the card.
 
+### 2025-07-16 — 3 UI Optimizations Batch
+
+- **Tick marks made more visible**: Replaced `border-r border-white/50` (1px, semi-transparent) with explicit `w-[2px] bg-white` divider elements using `Fragment` pattern. Now clearly visible against colored segments — easy to count readings per day at a glance.
+- **Card frame removed from DaySummary**: Removed `rounded-lg border border-gray-100 transition-colors duration-200 hover:border-gray-200` from the day content wrapper. Replaced with `py-0.5` for spacing. The outer Timeline component already provides its own card (`rounded-2xl bg-white shadow-sm border`), so individual day cards were redundant and interfered with tier-2 dot connections.
+- **Hover tooltips on bar segments**: Added `group/seg` + absolute-positioned tooltip to each CategoryDistribution segment. Shows category name, reading count, and BP values (sys/dia for each reading, "Avg: X/Y (×N)" for grouped). Uses `opacity-0 group-hover/seg:opacity-100 transition-opacity` — zero dependencies. Required passing `readings?: BloodPressureGroup[]` prop from DaySummary so the component has access to actual BP data per segment.
+- **Key pattern**: Tailwind's `group/{name}` modifier enables nested hover targets — essential when the bar is inside a larger clickable area that also uses `group`.
+

@@ -80,8 +80,8 @@ export function DaySummary({ dayReadings, isFirst, isLast, expanded, onToggle }:
           )}
         </div>
 
-        {/* Card: condensed header + range bar (no tier-2 readings inside card) */}
-        <div className={`flex-1 min-w-0 rounded-lg border border-gray-100 transition-colors duration-200 hover:border-gray-200 ${lowConfidence ? 'opacity-70' : ''}`}>
+        {/* Content area: condensed header + range bar (no card frame — parent timeline card wraps everything) */}
+        <div className={`flex-1 min-w-0 py-0.5 ${lowConfidence ? 'opacity-70' : ''}`}>
           {/* Condensed row header */}
           <div
             className="flex items-center gap-3 py-2 px-3 cursor-pointer group flex-wrap"
@@ -99,7 +99,7 @@ export function DaySummary({ dayReadings, isFirst, isLast, expanded, onToggle }:
 
             {/* Category distribution bar (tick marks show individual readings) */}
             <div className="flex-1 min-w-[60px] max-w-[140px]">
-              <CategoryDistribution categories={allCategories} />
+              <CategoryDistribution categories={allCategories} readings={dayReadings} />
             </div>
 
             {/* Dominant category text */}
