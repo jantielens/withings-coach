@@ -198,3 +198,11 @@ Timeline component accepts optional date range filter for future coaching agent 
 - **Tier-2 vertical timeline line fix**: Added `absolute left-[9px] top-0 bottom-0 w-0.5 bg-gray-300` continuous line through the tier-2 readings area, ensuring no gaps between entries. Horizontal stubs connect from this line to each reading dot.
 - **Dead code cleanup**: Removed `totalReadings`, `averagedCount`, `countLabel`, `rangeLabel` variables that were only used in the now-removed duplicate summary section.
 
+### 2025-07-16 — Tier-2 Timeline Disconnect Fix (Deep Investigation)
+
+- **ROOT CAUSE**: The tier-2 (individual reading) section was rendered INSIDE the summary card, which is the RIGHT sibling of the dot column in a `flex gap-3` layout. To visually connect tier-2 dots, a SECOND vertical line (`absolute left-[9px] top-0 bottom-0 w-0.5 bg-gray-300`) was placed inside the card. This 2nd line was at a completely different horizontal position from the main timeline line (which lives in the dot column on the LEFT side), creating the "2nd vertical line" artifact when a day was expanded.
+- **STRUCTURAL FIX**: Moved tier-2 readings OUT of the card entirely. Each tier-2 entry is now its own flex row with a `w-6` dot column (same width as tier-1), placing tier-2 dots on the EXACT same vertical line as tier-1 dots. Horizontal stubs (`w-3 h-0.5 bg-gray-300`) bridge from the dot column to the reading content, replacing the gap that `flex gap-3` provides for tier-1 rows.
+- **KEY LESSON**: Never put timeline elements (vertical lines, dots, stubs) inside a card that is a SIBLING of the dot column. Timeline elements must always be in the dot column itself to stay on the same vertical axis. The card is for content only.
+- **Layout math**: Dot column is `w-6` (24px), `items-center` positions the `w-0.5` (2px) line at `left: 11px`. This matches the inter-day connector at `ml-[11px]`. Tier-2 stubs (`w-3` = 12px) replace the `gap-3` (12px) from tier-1 rows, so content starts at the same 36px horizontal position.
+- **Expand/collapse preserved**: Range bar stays inside the card (day-level summary). Tier-2 section uses its own `max-h` + `opacity` transition wrapper outside the card.
+
