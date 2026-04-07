@@ -53,7 +53,6 @@ export function DaySummary({ dayReadings, isFirst, isLast, expanded, onToggle }:
   const diaMax = Math.max(...diastolics);
 
   const groupCount = dayReadings.length;
-  const lowConfidence = groupCount < 3;
   const dayLabel = formatDayShort(dayReadings[0].timestamp);
   const dayLabelLong = formatDayLong(dayReadings[0].timestamp);
 
@@ -69,6 +68,13 @@ export function DaySummary({ dayReadings, isFirst, isLast, expanded, onToggle }:
     <div>
       {/* Tier-1 row: day dot on main timeline + summary card */}
       <div className="relative flex gap-3">
+        {/* Warning icon column — reserves space so dots stay aligned */}
+        <div className="flex-shrink-0 w-5 self-stretch flex items-center justify-center">
+          {isHighRisk && (
+            <span title="High risk" className="text-sm leading-none">⚠️</span>
+          )}
+        </div>
+
         {/* Dot column with connecting line segments */}
         <div className="flex-shrink-0 w-6 self-stretch flex flex-col items-center">
           {isFirst ? (
@@ -77,7 +83,7 @@ export function DaySummary({ dayReadings, isFirst, isLast, expanded, onToggle }:
             <div className="flex-1 w-0.5 bg-gray-300" aria-hidden="true" />
           )}
           <div
-            className={`flex-shrink-0 rounded-full ${worstConfig.dotColor} ring-2 ring-white shadow-sm z-10 transition-transform duration-200 group-hover:scale-110 ${isHighRisk ? 'w-5 h-5 ring-offset-1 ring-red-300' : 'w-4 h-4'}`}
+            className={`flex-shrink-0 w-4 h-4 rounded-full ${worstConfig.dotColor} ring-2 ring-white shadow-sm z-10 transition-transform duration-200 group-hover:scale-110`}
             title={worstConfig.label}
             aria-label={`${dayLabelLong}: ${worstConfig.label}, ${groupCount} reading${groupCount !== 1 ? 's' : ''}`}
           />
@@ -89,10 +95,10 @@ export function DaySummary({ dayReadings, isFirst, isLast, expanded, onToggle }:
         </div>
 
         {/* Content area: condensed header + range bar (no card frame — parent timeline card wraps everything) */}
-        <div className={`flex-1 min-w-0 py-0.5 ${lowConfidence ? 'opacity-70' : ''}`}>
+        <div className="flex-1 min-w-0 py-0.5">
           {/* Condensed row header — CSS Grid for aligned dual-bar layout */}
           <div
-            className="grid items-center gap-x-3 py-2 px-3 cursor-pointer group grid-cols-[100px_minmax(60px,1fr)_auto] md:grid-cols-[100px_minmax(60px,1fr)_minmax(60px,1fr)_auto]"
+            className="grid items-center gap-x-10 py-2 px-3 cursor-pointer group grid-cols-[100px_minmax(60px,1fr)_auto] md:grid-cols-[100px_minmax(60px,1fr)_minmax(60px,1fr)_auto]"
             onClick={handleToggle}
             role="button"
             tabIndex={0}
@@ -100,7 +106,7 @@ export function DaySummary({ dayReadings, isFirst, isLast, expanded, onToggle }:
             aria-label={`${dayLabel}: ${worstConfig.label}, ${groupCount} reading${groupCount !== 1 ? 's' : ''}${isHighRisk ? ', high risk' : ''}${expanded ? ', expanded' : ''}`}
             onKeyDown={handleKeyDown}
           >
-            {/* Day label */}
+            {/* Day label with optional warning icon */}
             <span className="text-sm font-semibold text-gray-800 truncate">
               {dayLabel}
             </span>
@@ -135,6 +141,8 @@ export function DaySummary({ dayReadings, isFirst, isLast, expanded, onToggle }:
           const readingConfig = categoryConfig[reading.average.category];
           return (
             <div key={reading.id} className="flex items-center">
+              {/* Spacer matching warning column + gap from tier-1 (w-5 + gap-3 = 32px) */}
+              <div className="flex-shrink-0 w-8" aria-hidden="true" />
               {/* Dot column — same w-6 as tier-1, keeps dots on the SAME vertical line */}
               <div className="flex-shrink-0 w-6 self-stretch flex flex-col items-center">
                 <div className="flex-1 w-0.5 bg-gray-300" aria-hidden="true" />

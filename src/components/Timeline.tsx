@@ -117,10 +117,7 @@ function TimelineContent({ readings }: { readings: BloodPressureGroup[] }) {
 
   return (
     <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-100">
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">
-          Timeline
-        </p>
+      <div className="flex items-center justify-end mb-4 flex-wrap gap-2">
         <ZoneLegend />
       </div>
 
@@ -145,7 +142,10 @@ function TimelineContent({ readings }: { readings: BloodPressureGroup[] }) {
                 </div>
                 {/* Range bar scale: 60 — 120 — 140 — 200 (hidden on mobile) */}
                 <div className="hidden md:block relative h-3 min-w-0">
-                  <span className="absolute left-0 text-[10px] text-gray-400 leading-none whitespace-nowrap">60 mmHg</span>
+                  {/* Ideal BP reference lines — aligned with RangeBar markers */}
+                  <div className="absolute top-0 h-full w-px bg-gray-400/40" style={{ left: '42.86%' }} aria-hidden="true" />
+                  <div className="absolute top-0 h-full w-px bg-gray-400/40" style={{ left: '14.29%' }} aria-hidden="true" />
+                  <span className="absolute text-[10px] text-gray-400 leading-none whitespace-nowrap" style={{ left: '14.29%', transform: 'translateX(-50%)' }}>80 mmHg</span>
                   <span className="absolute text-[10px] text-gray-400 leading-none" style={{ left: '42.86%', transform: 'translateX(-50%)' }}>120</span>
                   <span className="absolute text-[10px] text-gray-400 leading-none" style={{ left: '57.14%', transform: 'translateX(-50%)' }}>140</span>
                   <span className="absolute right-0 text-[10px] text-gray-400 leading-none text-right">200</span>

@@ -22,6 +22,25 @@
 
 ## Learnings
 
+### 2025-07-24 — Ideal BP Reference Markers (120/80 mmHg)
+
+- **Added subtle ideal BP reference lines to RangeBar**: Two 1px `bg-gray-400/40` vertical lines at 120 mmHg (systolic ideal) and 80 mmHg (diastolic ideal), positioned using the same `((value - scaleMin) / scaleRange) * 100` math as the bar segments. Lines render behind colored segments — the ideal markers use no z-index while diastolic gets `z-[1]` and systolic gets `z-[2]`, preserving the existing layering.
+- **Works in both compact and normal modes**: No conditional logic needed — the ideal lines render inside the bar track div which adapts height via `compact ? 'h-2' : 'h-1.5'`. Lines use `h-full` so they fill whatever height the track has.
+- **Scale header integration in Timeline.tsx**: Added matching `bg-gray-400/40` reference lines at 42.86% (120 mmHg) and 14.29% (80 mmHg) in the sticky scale header. Also added "80" tick label at 14.29% — far enough from "60 mmHg" (0%) and "120" (42.86%) to avoid overlap.
+- **Tooltip skipped for markers**: The 1px lines are too narrow for reliable hover targets. The scale header labels (60, 80, 120, 140, 200) and the ZoneLegend disclaimer provide enough context.
+- **ZoneLegend disclaimer**: Added `"Target: 120/80 mmHg · Consult your doctor for personal goals"` as `text-xs text-gray-400` below the zone color swatches. Wrapped the legend in a flex-col container to stack the zones and disclaimer.
+- **Constants extracted**: `IDEAL_SYSTOLIC = 120` and `IDEAL_DIASTOLIC = 80` as named constants at module level for clarity and future reuse.
+- **Build & Tests**: ✅ TypeScript clean, build passes, zero new dependencies.
+
+### 2025-07-23 — Quick UI Polish (4 items)
+
+- **Reverted tier-1 dot size variation**: All dots back to uniform `w-4 h-4` with `ring-2 ring-white`. Removed the conditional `w-5 h-5 ring-offset-1 ring-red-300` for high-risk days — the size difference was too subtle to be useful and added visual noise.
+- **Re-introduced ⚠️ warning icon for Grade 2+ days**: Placed inline inside the date label cell (`flex items-center gap-1`) before the date text. This keeps it visually between the dot and date without adding a grid column or breaking alignment.
+- **Removed low-confidence opacity fade**: Deleted `opacity-70` for days with <3 readings. The measurement dots on bars already communicate data density — the fade was redundant and made low-data days harder to read.
+- **Increased horizontal gap between bars**: Changed `gap-x-3` → `gap-x-5` in both the day row grid (DaySummary) and the sticky scale header grid (Timeline) — gives the timeline bar and range bar more breathing room.
+- **Added "mmHg" unit to spread scale**: First label in the range bar scale header changed from `80` to `80 mmHg` with `whitespace-nowrap` to prevent wrapping. Other labels remain numbers-only.
+- **Cleanup**: Removed unused `lowConfidence` variable from DaySummary.
+
 ### 2025-07-22 — "Less Is More" UI Simplifications
 
 - **Removed badge text column from collapsed rows**: The severity label ("Grade 1", "High Normal", etc.) was redundant — the tier-1 dot color, TimelineBar colors, and ZoneLegend already encode it. Deleted the `<span>` and its `110px` grid column. Also removed the separate `20px` warning icon column.
@@ -266,3 +285,11 @@ Timeline component accepts optional date range filter for future coaching agent 
 - **Warning icon slot always reserved**: Changed from conditional rendering (`{isHighRisk && <span>}`) to always-rendered `<div>` wrapper with conditional content. The 20px grid column is always present, preventing layout shift when warning appears/disappears.
 - **Container widened**: `max-w-3xl` → `max-w-4xl` in both header and main content areas of `page.tsx`. Provides breathing room for the dual-bar layout.
 - **Build & Tests**: ✅ TypeScript clean, 65 tests passing, zero new dependencies.
+
+### 2025-07-23 — Scale, Gap, Alignment & Warning Icon Polish (5 items)
+
+- **RangeBar scale widened to 60–200 mmHg**: Changed `SCALE_MIN` default from 80 to 60, updated `TICK_VALUES` to `[60, 120, 140, 160, 200]`. Scale now spans 140 units instead of 120, giving more room for lower diastolic readings.
+- **Sticky header scale updated**: "80 mmHg" → "60 mmHg", tick positions recalculated (120 at 42.86%, 140 at 57.14%) to match the new 60–200 range.
+- **Doubled gap between timeline and range bars**: `gap-x-5` → `gap-x-10` in both the DaySummary grid and the Timeline sticky scale header grid. Keeps the two bar columns visually distinct.
+- **Right-aligned "24h" and "200" labels**: Added explicit `text-right` to both right-edge scale labels in the sticky header for guaranteed right-edge alignment with the bars below.
+- **Warning icon moved to LEFT of tier-1 dot**: Added a dedicated `w-5` warning column before the dot column in the tier-1 flex layout. For Grade 2+ days: `[⚠️] [dot] [date]`. For normal days the column renders empty, reserving space so all dots stay vertically aligned. Tier-2 expanded rows get a matching `w-8` spacer (w-5 + gap-3 = 32px) to keep their dots on the same vertical line. Inter-day connector updated from `ml-[11px]` to `ml-[43px]` to center on the shifted dot position. Sticky header also received a matching `w-5` spacer.

@@ -24,7 +24,7 @@ export default function Home() {
     <div className="flex flex-col flex-1 bg-gray-50">
       {/* Header */}
       <header className="bg-white border-b border-gray-100 sticky top-0 z-50">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-gray-900">Withings Coach</h1>
             <p className="text-sm text-gray-500">Last 30 days</p>
@@ -54,7 +54,7 @@ export default function Home() {
       </header>
 
       {/* Main content */}
-      <main className="flex-1 max-w-3xl mx-auto w-full px-4 sm:px-6 py-6 space-y-6">
+      <main className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 py-6 space-y-6">
         {/* Latest Reading */}
         {isLoading ? (
           <div className="rounded-2xl bg-white p-8 shadow-sm border border-gray-100 animate-pulse">
@@ -86,7 +86,8 @@ export default function Home() {
             <p className="text-xs text-gray-400 leading-relaxed max-w-lg mx-auto">
               ⚠️ Blood pressure readings are for informational purposes only. Blood
               pressure varies throughout the day and is influenced by stress, activity,
-              and posture. Always consult your physician for medical advice.
+              and posture. Target: 120/80 mmHg — consult your doctor for personal goals
+              and always seek physician advice for medical decisions.
             </p>
           </footer>
         )}

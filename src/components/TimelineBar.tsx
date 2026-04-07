@@ -81,7 +81,7 @@ interface TimelineBarProps {
 /**
  * 24-hour timeline bar using midpoint-split coloring. The entire bar is
  * filled — each reading owns the region from its previous midpoint to
- * its next midpoint. Thin white tick marks show exact measurement times.
+ * its next midpoint. Small outlined dot markers show exact measurement times.
  */
 export function TimelineBar({ readings }: TimelineBarProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
@@ -115,20 +115,29 @@ export function TimelineBar({ readings }: TimelineBarProps) {
               ? 'rounded-r-full'
               : '';
 
+        // Extend non-last segments slightly to eliminate subpixel gaps
+        const overlapPct = isLast ? 0 : 0.15;
+
+        // Position tooltip arrow at the dot marker, not at segment center
+        const dotRelativePct = ((ticks[i].positionPct - seg.leftPct) / seg.widthPct) * 100;
+
         return (
           <div
             key={seg.group.id}
             className={`absolute top-0 h-full cursor-pointer ${config.barColor} ${roundedClass}`}
             style={{
               left: `${seg.leftPct}%`,
-              width: `${seg.widthPct}%`,
+              width: `${seg.widthPct + overlapPct}%`,
             }}
             onMouseEnter={() => setHoveredId(seg.group.id)}
             onMouseLeave={() => setHoveredId(null)}
           >
-            {/* Tooltip */}
+            {/* Tooltip — anchored to the dot marker position */}
             {isHovered && (
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 pointer-events-none">
+              <div
+                className="absolute bottom-full mb-2 z-50 pointer-events-none -translate-x-1/2"
+                style={{ left: `${dotRelativePct}%` }}
+              >
                 <div className="bg-gray-900 text-white text-xs rounded-md px-2.5 py-1.5 whitespace-nowrap shadow-lg">
                   <div className="font-semibold">{formatTime(seg.group.timestamp)}</div>
                   {seg.group.isGrouped ? (
@@ -152,11 +161,11 @@ export function TimelineBar({ readings }: TimelineBarProps) {
         );
       })}
 
-      {/* Tick marks at exact reading positions */}
+      {/* Dot markers at exact reading positions */}
       {ticks.map((tick) => (
         <div
           key={`tick-${tick.group.id}`}
-          className="absolute top-0 h-full w-[2px] bg-white pointer-events-none"
+          className="absolute top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-white border border-gray-800 pointer-events-none z-10"
           style={{ left: `${tick.positionPct}%` }}
           aria-hidden="true"
         />
