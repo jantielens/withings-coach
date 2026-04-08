@@ -114,25 +114,32 @@ Fill in all values:
 ```bash
 NODE_ENV=production
 
-# Iron Session — generate with: openssl rand -base64 32
+# ━━━ App URL (IMPORTANT — set this first) ━━━━━━━━━━━━━━━━━━━━━━━━━━
+# The URL where you access the app. Must match the Withings callback URL.
+# ⚠️ BUILD-TIME variable — you MUST run "npm run build" after changing this.
+#
+# Examples:
+#   http://192.168.1.50:3000          (local network)
+#   https://coach.example.com         (custom domain)
+#   https://mybox.tail1234.ts.net     (Tailscale)
+NEXT_PUBLIC_BASE_URL=http://<lxc-ip>:3000
+
+# ━━━ Iron Session ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Generate with: openssl rand -base64 32
 IRON_SESSION_PASSWORD=<paste-generated-value>
 
-# Withings OAuth (from Step 4)
+# ━━━ Withings OAuth (from Step 4) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 WITHINGS_CLIENT_ID=<your-withings-client-id>
 WITHINGS_CLIENT_SECRET=<your-withings-client-secret>
 
-# Azure AI Foundry (your existing resource)
+# ━━━ Azure AI Foundry ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 AZURE_OPENAI_RESOURCE_NAME=<your-ai-foundry-resource-name>
 AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
 
-# Azure Service Principal (from Step 3)
+# ━━━ Azure Service Principal (from Step 3) ━━━━━━━━━━━━━━━━━━━━━━━━━
 AZURE_CLIENT_ID=<application-client-id>
 AZURE_CLIENT_SECRET=<client-secret-value>
 AZURE_TENANT_ID=<directory-tenant-id>
-
-# Base URL — the URL users access the app at (used for OAuth callback)
-# ⚠️ This is a build-time variable — run "./scripts/update.sh" after changing it
-NEXT_PUBLIC_BASE_URL=http://<lxc-ip>:3000
 ```
 
 Generate the iron-session password:
@@ -141,11 +148,13 @@ Generate the iron-session password:
 openssl rand -base64 32
 ```
 
-After saving, restart the app:
+After saving, **rebuild and restart** (needed because `NEXT_PUBLIC_BASE_URL` is a build-time variable):
 
 ```bash
-cd /opt/withings-coach && pm2 restart withings-coach
+cd /opt/withings-coach && npm run build && pm2 restart withings-coach
 ```
+
+> 💡 For future `.env` changes that don't touch `NEXT_PUBLIC_BASE_URL`, a simple `pm2 restart withings-coach` is enough — no rebuild needed.
 
 ---
 

@@ -99,36 +99,47 @@ else
   info "Generating .env template..."
   cat > "${ENV_FILE}" <<'ENVEOF'
 # ─── Withings Coach — Production Environment ─────────────────────────
-# Fill in all values below, then run: ./scripts/update.sh
+# Fill in ALL values below. See DEPLOY.md for step-by-step instructions.
+#
+# After editing, run:
+#   cd /opt/withings-coach && npm run build && pm2 restart withings-coach
 
 NODE_ENV=production
 
-# ─── Iron Session (encryption key for auth cookies) ──────────────────
+# ━━━ REQUIRED: App URL ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# The URL where you access the app. Used for Withings OAuth redirects.
+# Examples:
+#   http://192.168.1.50:3000          (local network, no TLS)
+#   https://coach.example.com         (custom domain with TLS)
+#   https://mybox.tail1234.ts.net     (Tailscale)
+#
+# ⚠️  BUILD-TIME variable — you MUST run "npm run build" after changing this.
+#     The Withings callback URL in your Withings dashboard must match:
+#     <this-value>/api/auth/withings/callback
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
+
+# ━━━ REQUIRED: Iron Session ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Encryption key for auth cookies (32+ characters)
 # Generate with: openssl rand -base64 32
 IRON_SESSION_PASSWORD=
 
-# ─── Withings OAuth ──────────────────────────────────────────────────
-# Get these from https://developer.withings.com/dashboard/
+# ━━━ REQUIRED: Withings OAuth ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Get from https://developer.withings.com/dashboard/
 WITHINGS_CLIENT_ID=
 WITHINGS_CLIENT_SECRET=
 
-# ─── Azure AI Foundry ────────────────────────────────────────────────
-# Resource name from your AI Foundry instance (e.g. "my-ai-foundry")
+# ━━━ REQUIRED: Azure AI Foundry ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Your AI Foundry resource name (e.g. "my-ai-foundry")
 AZURE_OPENAI_RESOURCE_NAME=
 # Model deployment name (e.g. "gpt-4o")
 AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
 
-# ─── Azure Service Principal (for AI Foundry auth from non-Azure host)
-# Create via: az ad sp create-for-rbac --name "withings-coach"
-# Then grant "Cognitive Services OpenAI User" role on your AI Foundry resource
+# ━━━ REQUIRED: Azure Service Principal ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# For AI Foundry auth from a non-Azure host.
+# See DEPLOY.md Step 3 for how to create these.
 AZURE_CLIENT_ID=
 AZURE_CLIENT_SECRET=
 AZURE_TENANT_ID=
-
-# ─── Base URL (used for OAuth callback redirect) ─────────────────────
-# Set to the URL users access the app at (e.g. https://your-domain.com)
-# This is a build-time variable — run "npm run build" after changing it
-NEXT_PUBLIC_BASE_URL=http://localhost:3000
 ENVEOF
 
   ok ".env template created at ${ENV_FILE}"
