@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
         MetricType.BLOOD_PRESSURE,
         {
           from: new Date(dateRange.from),
-          to: new Date(dateRange.to),
+          to: new Date(dateRange.to + 'T23:59:59.999Z'),
         },
         false
       ),
