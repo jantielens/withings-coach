@@ -41,9 +41,21 @@ const config: Config = {
       roots: ['<rootDir>/src/__tests__/components'],
       moduleNameMapper: {
         '^@/(.*)$': '<rootDir>/src/$1',
+        '\\.css$': '<rootDir>/src/__mocks__/styleMock.js',
+        '^rehype-highlight$': '<rootDir>/src/__mocks__/rehypePlugin.js',
+        '^rehype-raw$': '<rootDir>/src/__mocks__/rehypePlugin.js',
       },
+      transformIgnorePatterns: [
+        'node_modules/.+',
+      ],
       transform: {
         '^.+\\.tsx?$': [
+          'ts-jest',
+          {
+            tsconfig: 'tsconfig.json',
+          },
+        ],
+        '^.+\\.jsx?$': [
           'ts-jest',
           {
             tsconfig: 'tsconfig.json',

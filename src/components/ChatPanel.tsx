@@ -4,6 +4,9 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from '@ai-sdk/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
+import rehypeRaw from 'rehype-raw';
+import 'highlight.js/styles/github.css';
 import type { UIMessage } from 'ai';
 
 const SUGGESTED_PROMPTS = [
@@ -167,8 +170,8 @@ export function ChatPanel() {
                   {message.role === 'user' ? (
                     <p className="whitespace-pre-wrap">{getMessageText(message)}</p>
                   ) : (
-                    <div className="prose prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-headings:font-semibold prose-h1:text-base prose-h2:text-sm prose-h3:text-sm prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-table:my-2 prose-pre:my-2 prose-pre:bg-gray-200 prose-pre:rounded-lg prose-blockquote:my-2 prose-blockquote:border-gray-300 prose-hr:my-3 prose-code:text-gray-800 prose-code:bg-gray-200 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:before:content-[''] prose-code:after:content-[''] prose-td:py-1 prose-th:py-1 [&_br]:hidden">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    <div className="prose prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-h1:text-lg prose-h1:font-bold prose-h2:text-base prose-h2:font-semibold prose-h3:text-sm prose-h3:font-semibold prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-table:my-2 prose-table:border prose-td:border prose-th:border prose-td:px-2 prose-th:px-2 prose-pre:my-2 prose-pre:bg-gray-200 prose-pre:rounded-lg prose-blockquote:my-2 prose-blockquote:border-gray-300 prose-blockquote:bg-gray-50 prose-blockquote:rounded-r-lg prose-hr:my-3 prose-code:text-gray-800 prose-code:bg-gray-200 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:before:content-[''] prose-code:after:content-[''] prose-td:py-1 prose-th:py-1">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight, rehypeRaw]}>
                         {getMessageText(message)}
                       </ReactMarkdown>
                     </div>
