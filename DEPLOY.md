@@ -39,7 +39,7 @@ In the Proxmox web UI:
 SSH into the LXC container and run:
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/jantielens/withings-coach/main/scripts/install.sh)"
+apt-get update && apt-get install -y curl && bash -c "$(curl -fsSL https://raw.githubusercontent.com/jantielens/withings-coach/main/scripts/install.sh)"
 ```
 
 > ⚠️ If the repo is private, you'll need to authenticate. Clone manually instead:

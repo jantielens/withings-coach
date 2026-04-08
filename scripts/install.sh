@@ -39,13 +39,17 @@ fi
 
 info "Starting Withings Coach installation..."
 
+# ── 0. Base dependencies ─────────────────────────────────────────────
+info "Installing base dependencies..."
+apt-get update -qq
+apt-get install -y -qq curl ca-certificates gnupg git >/dev/null
+ok "Base dependencies ready"
+
 # ── 1. Node.js ───────────────────────────────────────────────────────
 if command -v node &>/dev/null && node -v | grep -q "v${NODE_MAJOR}"; then
   ok "Node.js $(node -v) already installed"
 else
   info "Installing Node.js ${NODE_MAJOR}..."
-  apt-get update -qq
-  apt-get install -y -qq curl ca-certificates gnupg >/dev/null
   mkdir -p /etc/apt/keyrings
   curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
     | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
@@ -65,13 +69,7 @@ else
   ok "pm2 installed"
 fi
 
-# ── 3. Git ───────────────────────────────────────────────────────────
-if ! command -v git &>/dev/null; then
-  info "Installing git..."
-  apt-get install -y -qq git >/dev/null
-fi
-
-# ── 4. Clone or update repo ─────────────────────────────────────────
+# ── 3. Clone or update repo ─────────────────────────────────────────
 if [[ -d "${APP_DIR}/.git" ]]; then
   warn "${APP_DIR} already exists — pulling latest..."
   cd "${APP_DIR}"
