@@ -2,924 +2,169 @@
 
 ## Active Decisions
 
-### Clinical Decisions — Blood Pressure
+### Chatbot Feature Architecture — Context-in-Prompt & Vercel AI SDK Integration
+
+**Session:** 2026-04-08 Chatbot Architecture Alignment  
+**Agents:** Cox (Lead), Elliot (Frontend), JD (AI Engineer), Turk (Backend)  
+**Status:** ✅ **Alignment Complete — Ready for Team Review & Implementation**
+
+---
+
+## Architecture Decision: Integrated Chatbot / Coaching Agent
+
+**From:** Cox (Lead / Architect)  
+**Date:** 2026-04-08  
+**Status:** ✅ Team alignment complete
+
+### Summary
+
+Jan wants an integrated chatbot: VS Code-like split layout with health dashboard (left) and ChatGPT-style chat panel (right). LLM on Azure AI Foundry with managed identity. Chat accesses user's health data, diary entries, and context notes.
+
+### Key Decisions
+
+1. **Context-in-Prompt** — No RAG. BP data (~15K tokens/year) fits comfortably in 128K context window.
+2. **3 Azure Resources** — AI Foundry (hub + project + deployment) + App Service. No search, vector DB, Redis.
+3. **Managed Identity Auth** — DefaultAzureCredential. Local: `az login`. Prod: system-assigned identity.
+4. **Single API Endpoint** — `POST /api/chat` returning SSE stream. No server-side chat history.
+5. **UI Stack** — Vercel AI SDK + shadcn/ui + react-resizable-panels. Streaming out-of-the-box.
+6. **System Prompt** — Refactor existing prompt builder. Add conversational instructions, date awareness. Rebuild per request.
+7. **Timeline** — 3 weeks: Week 1 (spike + foundation), Week 2 (API + UI), Week 3 (polish + deploy).
+8. **Risk** — Managed identity auth spike Week 1 (highest priority). If fails, fallback to API key.
+
+---
+
+## Chat UI Libraries — Research & Recommendation
+
+**By:** Elliot (Frontend Dev)  
+**Date:** 2026-04-08  
+**Status:** ✅ Complete
+
+### Recommendation
+
+**🏆 Vercel AI SDK + shadcn/ui + react-resizable-panels**
+
+- ✅ Native streaming via `useChat` hook
+- ✅ React 19 native
+- ✅ ~25 kB bundle (Vercel SDK)
+- ✅ Tailwind-first, minimal CSS
+- ✅ Active maintenance, production-proven
+
+### Rejected Options
+
+- ❌ @chatscope/chat-ui-kit-react — No streaming, React 19 untested, 40–60 kB
+- ❌ react-chat-elements — Too minimal, no streaming, small community
+- ❌ Build custom — 2–3 weeks dev, redundant given Vercel SDK
+- ❌ Stream Chat React — Overkill for AI chat, 100+ kB
+
+---
+
+## Chatbot LLM Integration Patterns
+
+**By:** JD (AI Engineer)  
+**Date:** 2026-04-08  
+**Status:** ✅ Complete
+
+### Recommendation
+
+**Context-in-Prompt with Azure AI Foundry (GPT-4o-mini) via Vercel AI SDK**
+
+### Token Math
+
+| Scenario | Tokens | % of 128K Window |
+|----------|--------|-----------------|
+| 1 year BP data | ~15K | 12% |
+| 2 years + diary | ~41K | 32% |
+
+**Conclusion:** RAG is unnecessary. Data fits comfortably.
+
+### Data Flow
+
+1. User message → detect time intent ("last week" = 7 days)
+2. Fetch BP readings, diary, context from DB
+3. Build user context (markdown table)
+4. Construct: [system prompt, user context, ...history]
+5. Stream response via Azure → Vercel SDK → SSE → Frontend
+
+### Model: GPT-4o-mini
+
+- 128K context window
+- Outperforms GPT-3.5 Turbo
+- 60% cheaper than GPT-3.5
+- Best price/performance for MVP
+
+---
+
+## Azure AI Foundry Backend Integration
+
+**By:** Turk (Backend Developer)  
+**Date:** 2026-04-08  
+**Status:** ✅ Complete
+
+### Recommendation
+
+**Vercel AI SDK (`ai` + `@ai-sdk/azure`) + DefaultAzureCredential**
+
+- Zero-boilerplate streaming (SSE auto-conversion)
+- Managed identity first-class support
+- React hook integration (`useChat`)
+- Battle-tested in production
+
+### Packages
+
+```
+npm install ai @ai-sdk/azure @azure/identity
+```
+
+### Auth Pattern
+
+**DefaultAzureCredential tries (in order):**
+1. Environment variables
+2. Azure CLI (`az login` — local dev) ✅
+3. VSCode extension (optional)
+4. Managed identity (App Service — prod) ✅
+
+**Local:** `az login` auto-detected  
+**Prod:** System-assigned identity auto-detected
+
+### API Route Pattern
+
+```typescript
+import { streamText } from 'ai';
+import { azure } from '@ai-sdk/azure';
+
+export async function POST(req: Request) {
+  const { messages } = await req.json();
+  const userContext = await buildUserContext(userId);
+  
+  const result = await streamText({
+    model: azure('gpt-4o-mini'),
+    system: buildSystemPrompt(userContext),
+    messages,
+  });
+  
+  return result.toDataStreamResponse();
+}
+```
+
+---
+
+### Previous Decisions
+
+## Clinical Decisions — Blood Pressure
 
 **From:** Kelso (Medical Advisor)  
-**Date:** 2026-04-06  
-**Context:** Switch from ACC/AHA 2017 (U.S.) to ESC/ESH 2018 (European) hypertension classification; implement multi-reading detection and averaging.
+**Date:** 2026-04-06
+
+### Decision 1: ESC/ESH 2018 BP Classification
+
+**Status:** ✅ **Binding** — Implemented
+
+### Decision 2: Multi-Reading Averaging
+
+**Status:** ✅ **Binding** — Implemented
 
 ---
 
-#### Decision 1: Use ESC/ESH 2018 BP Classification Thresholds (Supersedes ACC/AHA 2017)
+## Miscellaneous
 
-**What:** Adopt the **2018 ESC/ESH Hypertension Guidelines** for all home BP readings. Replaces previous ACC/AHA 2017 classification.
-
-**The 7 ESC/ESH 2018 Categories:**
-
-| Category | Systolic | AND | Diastolic | Clinical Guidance |
-|----------|----------|-----|-----------|-------------------|
-| **Optimal** | <120 mmHg | AND | <80 mmHg | Ideal; cardiovascular lowest risk |
-| **Normal** | 120–129 mmHg | AND | <80 mmHg | Excellent; still considered normal |
-| **High Normal** | 130–139 mmHg | AND/OR | 80–89 mmHg | Borderline; monitor closely |
-| **Grade 1 Hypertension** | 140–159 mmHg | AND/OR | 90–99 mmHg | Mild HTN; lifestyle + pharmacological therapy |
-| **Grade 2 Hypertension** | 160–179 mmHg | AND/OR | 100–109 mmHg | Moderate HTN; immediate pharmacological therapy |
-| **Grade 3 Hypertension** | ≥180 mmHg | AND/OR | ≥110 mmHg | Severe HTN; urgent evaluation required |
-| **Isolated Systolic Hypertension** | ≥140 mmHg | AND | <90 mmHg | Systolic elevated, diastolic normal; treat as HTN |
-
-**Enum values:**
-```typescript
-enum BPCategory {
-  OPTIMAL = 'optimal',
-  NORMAL = 'normal',
-  HIGH_NORMAL = 'high_normal',
-  GRADE_1 = 'grade_1',
-  GRADE_2 = 'grade_2',
-  GRADE_3 = 'grade_3',
-  ISOLATED_SYSTOLIC = 'isolated_systolic',
-}
-```
-
-**Category Assignment Rule:**
-- When systolic and diastolic fall into *different* categories, assign the **higher severity category**
-- **Isolated Systolic HTN check is performed first:** If systolic ≥140 AND diastolic <90, classify as ISH regardless of systolic severity
-- ISH is a distinct clinical entity per ESC/ESH guidelines
-
-**Why:** 
-- European clinical standard (ESC/ESH, WHO)
-- All modern guidelines converge on similar thresholds
-- More nuanced (7 vs. 5 categories) for better risk stratification
-- Explicit "Optimal vs. Normal" distinction
-- ISH recognition as distinct pattern
-
-**Scope:** MVE, LLM coaching agent, doctor view.
-
-**Status:** ✅ **Binding** — Implemented in `src/lib/classification/blood-pressure.ts`
-
----
-
-#### Decision 2: Multi-Reading Averaging — Clinical Validity & Implementation
-
-**What:** Blood pressure readings taken within 10 minutes of each other are grouped together, averaged, and classified as a single reading group.
-
-**Clinical Validation:**
-- **Is averaging 3 readings within 10 minutes clinically valid?** YES — Gold standard in clinical practice per ESC/ESH 2018 guidelines
-- The ESC/ESH 2018 guidelines explicitly recommend: Take at least 2 readings, preferably 3, in the same session (1–2 minutes apart)
-- Standard practice because:
-  1. Reduces white-coat effect (first reading often artificially elevated)
-  2. Captures typical BP, averages out transient fluctuations
-  3. Matches home monitor conventions (designed for repeated same-session readings)
-
-**Averaging Algorithm:**
-- Method: **Mean of all N readings** (SUM ÷ N)
-  - Systolic: (sys1 + sys2 + sys3) ÷ 3 → round to nearest integer
-  - Diastolic: (dia1 + dia2 + dia3) ÷ 3 → round to nearest integer
-  - Pulse: (pulse1 + pulse2 + pulse3) ÷ 3 → round to nearest integer
-- **Grouping window:** Consecutive readings ≤10 minutes apart form one group
-- **Classification:** Applied to the AVERAGED reading only, not individual readings
-- **Rationale:** Clinically sound; matches clinical trial methodology. Avoids confusion (e.g., 3 different categories from one session)
-
-**Data Model:**
-```typescript
-interface ReadingGroup<T> {
-  id: string;
-  readings: HealthMetric<T>[];  // individual readings
-  average: T;                    // computed average
-  timestamp: string;             // first reading's timestamp
-  isGrouped: boolean;            // true if >1 reading in group
-}
-```
-
-**Summary Stats:**
-- `MetricSummary.count` = total individual readings
-- `MetricSummary.groupCount` = number of groups (prevents triple-counting in 7-day summary)
-- Summary calculations use group averages, not individual readings
-
-**Display Labels:**
-- Primary: "Average of 3 readings taken 2025-07-16 at 08:15"
-- Compact: "Average (3 readings)"
-- Timeline: "08:15 — Average 142/88 (3 readings) — Grade 1 HTN"
-- Expandable: Click badge to show individual readings with time offsets (+0s, +62s, +124s)
-
-**Status:** ✅ **Binding** — Implemented. API contract changed to ReadingGroup<T>[]. All consumers updated.
-
----
-
-#### Decision 3: Category Assignment Uses the Higher of Systolic/Diastolic
-
-**Algorithm:**
-- Systolic and diastolic may fall into different ESC/ESH categories
-- **Assign the higher severity category** when they differ
-- Example: 155/102 (Grade 1 systolic, Grade 2 diastolic) → **Grade 2**
-
-**Why:** Both components matter. When they disagree, classify at the worse level. Prevents underestimating risk.
-
-**Status:** ✅ **Binding** — Core principle of ESC/ESH classification
-
----
-
-#### Decision 4: Pulse Display Strategy
-
-**What:** 
-- Always show pulse alongside BP readings (smaller font, below systolic/diastolic)
-- No automatic pulse-based alerts in the MVP
-- Future phases (coaching agent, doctor view) can add pulse interpretation
-
-**MVP Display:**
-- Latest reading card: Show pulse beneath BP numbers (e.g., "72 bpm")
-- Timeline entries: Include pulse in list view
-- Multi-reading groups: Average pulse shown with individual pulse values on expansion
-
-**Why:** Pulse is important clinical context. But standalone pulse interpretation in home settings is unreliable — resting HR varies by fitness, time of day, stress, caffeine. Show the data; let future features interpret smartly.
-
-**Status:** ✅ **Binding** — always include pulse in readings and timeline; no MVP warnings.
-
----
-
-#### Decision 5: Medical Disclaimer for Timeline View
-
-**What:** Single, visible disclaimer at the **bottom of timeline view**:
-
-**Recommended text:**
-```
-⚠️ This data is for informational purposes only. Blood pressure varies 
-throughout the day and is influenced by stress, activity, and posture. 
-Consult your physician to interpret these readings and adjust any health decisions.
-```
-
-**Placement:** 
-- Footer of scrollable timeline
-- Small text (10–12pt), gray color, visible on all devices
-- Not repeated on individual readings
-
-**Why:** Home BP readings are inherently variable. One clear disclaimer handles legal responsibility and sets patient expectations without inducing unnecessary anxiety.
-
-**Status:** ✅ **Binding** — implement in timeline footer.
-
----
-
-#### Decision 6: 7-Day Summary Should Show Average + Median + Range + Group Count
-
-**What:** Summary card displays:
-
-**Format:**
-```
-Systolic:   Avg 128  |  Median 126  |  Range 118–142 mmHg
-Diastolic:  Avg 82   |  Median 81   |  Range 75–89 mmHg
-Reading Groups: 5 sessions | 12 total readings over 7 days
-```
-
-**Rationale:**
-- **Average:** Familiar, useful for trend
-- **Median:** Robust to outliers
-- **Range (min–max):** Shows variability, highlights anomalies
-- **Group Count:** Critical context — matches user mental model (5 sessions, not 15 readings)
-- **Individual reading count:** Transparency on how many measurements went into the average
-
-**Why:** Average alone is misleading. With multi-reading grouping, group count (sessions) is more meaningful than total reading count (which can inflate due to averaging).
-
-**Status:** ✅ **Binding** — Implemented in `MetricSummary` with `groupCount` field
-
----
-
-### Architecture Decisions — MVE
-
-**From:** Cox (Lead/Architect)  
-**Date:** 2025-07-15  
-**Context:** MVE PRD finalized — these are the binding architecture decisions.
-
----
-
-#### Decision 1: Next.js 14+ with App Router, TypeScript
-
-**What:** Single project for frontend and backend. API routes serve as the backend. TypeScript end-to-end.
-
-**Why:** Minimal deployment surface (one project, not two). Shared types between API and UI eliminate a whole class of bugs. Deploys to Azure with env var changes only.
-
-**Trade-off:** Team must know Next.js. This is a reasonable expectation for a modern web project.
-
-**Status:** ✅ Decided
-
----
-
-#### Decision 2: Metric-Agnostic Data Model with Generic Types
-
-**What:** `HealthMetric<T>` generic base type. Blood pressure is `HealthMetric<BloodPressureData>`. New metric types implement their own `T`.
-
-**Why:** Jan explicitly said "avoid heavy refactorings in the future." Adding heart rate or ECG should be additive — new type, new adapter, new component. The service layer, API routes, and hooks don't change.
-
-**Trade-off:** Slightly more abstraction in the MVE than strictly necessary. Cost: ~1 hour. Payoff: avoids rewriting the data pipeline for every new metric.
-
-**Status:** ✅ Decided
-
----
-
-#### Decision 3: DataSourceAdapter Interface (Adapter Pattern)
-
-**What:** All external data sources implement `DataSourceAdapter`. Withings is the first implementation. The rest of the system calls the interface, never the Withings API directly.
-
-**Why:** Future sources (Garmin, Apple Health, manual entry) slot in without touching business logic. Also makes testing trivial — mock the adapter.
-
-**Status:** ✅ Decided
-
----
-
-#### Decision 4: AuthProvider Abstraction (No OAuth in MVE)
-
-**What:** `AuthProvider` interface with a single `getAccessToken()` method. MVE implementation reads from `WITHINGS_ACCESS_TOKEN` env var. OAuth is a future implementation of the same interface.
-
-**Why:** Jan said "if multi-user OAuth is easy, do it." Withings OAuth is not easy — it's a full redirect flow with PKCE, token refresh, and session management. The abstraction (20 min) gives us the same future-proofing benefit without the 2-3 day OAuth implementation.
-
-**Status:** ✅ Decided
-
----
-
-#### Decision 5: Fetch-on-Demand, No Database
-
-**What:** Every page load fetches fresh data from Withings API. No local DB, no caching layer.
-
-**Why:** Simplest possible data flow. Add caching only when rate limits or latency force the issue.
-
-**Risk:** If Withings rate-limits us, we'll need to add caching. Turk to investigate rate limits.
-
-**Status:** ✅ Decided
-
----
-
-#### Decision 6: Clinical Classification in the Service Layer
-
-**What:** BP category assignment (Normal, Elevated, etc.) happens server-side in the service layer, not in UI components.
-
-**Why:** Three future consumers need this classification: timeline UI, LLM coaching agent, doctor view. If it lives in the UI, the other two consumers can't use it. Service-layer classification is reusable.
-
-**Dependency:** Kelso to confirm AHA classification thresholds.
-
-**Status:** ✅ Decided
-
----
-
-#### Decision 7: Single Parameterized API Route
-
-**What:** `GET /api/health/metrics?type=blood_pressure` — one route, metric type as a parameter. Not `/api/blood-pressure`, `/api/heart-rate`, etc.
-
-**Why:** New metric types don't need new routes. The route delegates to the metric registry. Less code, less routing complexity.
-
-**Status:** ✅ Decided
-
----
-
-#### Decision 8: No Charts in MVE
-
-**What:** Timeline is a chronological list, not a chart/graph.
-
-**Why:** Charts require a charting library, design decisions about axes/scales, and responsive behavior. The list communicates the same information and ships faster. Charts are Phase 2.
-
-**Status:** ✅ Decided
-
----
-
-*These decisions are binding unless overridden by team consensus. Disagreements go through Cox.*
-
----
-
-### Architecture Decisions — API & Data
-
-**From:** Turk (Backend Dev)  
-**Date:** 2026-04-06  
-**Title:** Withings API Uses POST with URL-Encoded Body
-
-**What:** The Withings `measure?action=getmeas` endpoint requires `POST` with `Content-Type: application/x-www-form-urlencoded` and a Bearer token in the Authorization header. Not a GET with query params.
-
-**Why it matters:** Anyone touching the adapter or writing tests needs to know this — mocking a GET won't work. Withings docs are ambiguous on this; confirmed via their API reference.
-
-**Implementation detail:** Measure values from Withings use `value * 10^unit` format (e.g., value=128, unit=0 → 128 mmHg). The `unit` field is an exponent, not a unit label.
-
-**Status:** ✅ Implemented in `src/lib/adapters/withings-adapter.ts`
-
----
-
-### OAuth & Token Management
-
-**From:** Turk (Backend Dev)  
-**Date:** 2026-04-06  
-**Title:** OAuth Token Helper Uses Local Callback Server
-
-**What:** The `scripts/get-token.ts` helper uses a local HTTP server on port 3000 at `/api/auth/callback` to catch the OAuth redirect — the same path the Next.js app would use in production. This means the redirect URI registered in the Withings developer portal (`http://localhost:3000/api/auth/callback`) works for both the helper script and future OAuth integration.
-
-**Why:**
-- No copy-pasting authorization codes manually
-- The callback path matches the app's eventual auth route, so one redirect URI registration covers both
-- State parameter validation prevents CSRF in the redirect flow
-
-**Trade-off:** Port 3000 conflicts with `next dev`. The script is meant to be run standalone before starting the app, not alongside it. If this becomes an issue, we can make the port configurable.
-
-**Status:** ✅ Implemented. Users can run `npm run get-token` to retrieve access tokens.
-
----
-
-### Bug Fixes
-
-**From:** Turk (Backend Dev)  
-**Date:** 2026-04-06  
-**Title:** Withings API `meastype` → `meastypes` Fix
-
-**What was broken:** The adapter used `meastype: '10'` (singular) which tells the Withings API to only return systolic measures within each group. Diastolic and pulse measures were stripped from the response. The mapping code then skipped every reading because `diastolicMeas` was always `undefined`.
-
-**Root cause:** `meastype` (singular) filters individual measures, not groups. The comment `// Withings returns all BP measures in the group` was incorrect.
-
-**Fix:** Changed to `meastypes: '9,10,11'` (plural, comma-separated) which requests all three BP measure types. The full group now includes systolic, diastolic, and pulse.
-
-**Also added:** `[Withings]`-prefixed debug logging — request params, HTTP status, API status, measure group count, and parsed BP readings count. Visible in server console output.
-
-**File:** `src/lib/adapters/withings-adapter.ts`
-
-**Build:** ✅ Passes
-
-**Status:** ✅ Implemented
-
----
-
-### Data Quality Decisions — Input Validation
-
-**From:** Carla (Tester)  
-**Date:** 2026-04-06  
-**Title:** Add Input Validation to BP Classification (Phase 2)
-
-**Observation:** `classifyBloodPressure()` accepts any number without validation. Zero and negative values silently classify as "normal" because they fall below all thresholds. This is mathematically correct but clinically meaningless.
-
-**Risk:**
-- A sensor glitch sending `0/0` would display as "Normal" — misleading
-- The LLM coaching agent (Phase 2) could interpret a zero reading as healthy
-- The doctor view (Phase 3) showing `0/0 — Normal` would erode trust immediately
-
-**Recommendation:** Add a guard to `classifyBloodPressure()` that throws or returns a distinct status for physiologically impossible values. Reasonable lower bounds: systolic ≥ 40 mmHg, diastolic ≥ 20 mmHg.
-
-**Priority:** Low (MVE safe — Withings API won't send zeroes) → Medium (before Phase 2 coaching agent)
-
-**Status:** 📋 Proposed for Phase 2. **Assigned to:** Turk (implementation), Kelso (clinical lower bounds validation)
-
----
-
-### Frontend UI Decisions — ESC/ESH & Multi-Reading Display
-
-**From:** Elliot (Frontend Developer)  
-**Date:** 2026-04-06  
-**Context:** ESC/ESH 2018 classification migration + ReadingGroup UI support
-
----
-
-#### Decision 1: Shared Category Config Utility
-
-**What:** Extracted `categoryConfig` (label + Tailwind color classes) from individual components into `src/lib/ui/category-config.ts`. Both UI components now import from the shared module.
-
-**Why:** Category config was duplicated in two components. With 7 categories (up from 5), keeping them in sync would be error-prone. Any new component that needs BP category badges just imports the config.
-
-**Implementation:** `categoryConfig` object maps BPCategory enum to display label and Tailwind classes:
-```typescript
-const categoryConfig = {
-  OPTIMAL: { label: 'Optimal', classes: 'bg-green-100 text-green-800' },
-  NORMAL: { label: 'Normal', classes: 'bg-green-50 text-green-700' },
-  HIGH_NORMAL: { label: 'High Normal', classes: 'bg-yellow-100 text-yellow-800' },
-  // ... etc.
-}
-```
-
-**Status:** ✅ Implemented in `src/lib/ui/category-config.ts`
-
----
-
-#### Decision 2: ESC/ESH 2018 Category Badge Colors
-
-**What:** Updated all category badges to match ESC/ESH 2018 classification:
-
-| Category | Tailwind Classes | Rationale |
-|----------|-----------------|-----------|
-| Optimal | `bg-green-100 text-green-800` | Ideal; cardiovascular lowest risk |
-| Normal | `bg-green-50 text-green-700` | Excellent; still normal |
-| High Normal | `bg-yellow-100 text-yellow-800` | Borderline; monitor closely |
-| Grade 1 | `bg-orange-100 text-orange-800` | Mild hypertension |
-| Grade 2 | `bg-red-100 text-red-800` | Moderate hypertension |
-| Grade 3 | `bg-red-200 text-red-900` | Severe hypertension |
-| Isolated Systolic | `bg-purple-100 text-purple-800` | Distinct clinical pattern |
-
-**Why:** 
-- Backend switched from AHA to ESC/ESH classification
-- Colors progress from green → yellow → orange → red with increasing severity
-- Purple for Isolated Systolic distinguishes it as a distinct clinical entity
-- Consistent with modern blood pressure monitoring apps
-
-**Status:** ✅ Implemented
-
----
-
-#### Decision 3: Expand/Collapse Pattern for Grouped Readings
-
-**What:** When `isGrouped: true`, grouped readings show:
-- A small `×N` badge (blue, clickable) in TimelineEntry (e.g., "×3" for 3 readings)
-- A "Show individual readings" link in LatestReading
-- On click, expands to show individual readings with time offsets (+0s, +62s, +124s)
-- Uses Tailwind `max-h` + `opacity` transitions for smooth animation
-
-**Why:** Users taking 3 readings in a row (common with Withings devices) need to see the individual readings that make up an average, but shouldn't be cluttered by them by default.
-
-**Trade-off:** Used CSS max-h transitions instead of a library like framer-motion. Slightly less smooth for variable-height content, but zero added dependencies.
-
-**UX Details:**
-- Timeline shows only average by default (clean, scannable)
-- Click ×N badge to expand inline
-- LatestReading shows average prominently; "Show readings" link below
-- Individual readings labeled with offsets: "Reading 1 (+0s), Reading 2 (+62s), Reading 3 (+124s)"
-
-**Status:** ✅ Implemented
-
----
-
-#### Decision 4: ReadingGroup as Primary Data Shape
-
-**What:** All frontend components now consume `ReadingGroup<T>[]` instead of `HealthMetric<T>[]`:
-- `useHealthData` hook
-- `Timeline`, `TimelineEntry` components
-- `LatestReading`, `SummaryCard` components
-- `page.tsx`
-
-**API contract:** MetricsResponse updated to return `ReadingGroup<T>[]` instead of `HealthMetric<T>[]`
-
-**Why:** The API groups consecutive readings taken within 10 minutes into averaged groups. Single readings are wrapped as `ReadingGroup` with `isGrouped: false` — so the UI handles both cases uniformly. Eliminates conditional logic throughout the UI.
-
-**Impact:** Breaking change to all component props. All tests updated to reflect new data shape.
-
-**Status:** ✅ Implemented
-
----
-
-#### Decision 5: SummaryCard Shows Group Count
-
-**What:** SummaryCard now displays:
-- **Primary metric:** `groupCount` (number of reading groups/sessions)
-- **Subtitle:** How many groups are averaged (e.g., "5 sessions, 12 readings")
-
-**Why:** Displaying total individual readings (e.g., 15) when the user took 5 sessions (some with 3 readings each) is misleading. Group count (5) matches the user's mental model ("I took readings 5 times this week").
-
-**Calculation (in page.tsx):**
-- Count total groups in data
-- Count total individual readings across all groups
-- Compute average readings per group
-- Pass to SummaryCard for display
-
-**Status:** ✅ Implemented
-
----
-
-### Implementation Summary — ESC/ESH & Multi-Reading
-
-**From:** Engineering Team  
-**Date:** 2026-04-06  
-**Scope:** Full implementation of ESC/ESH 2018 classification + multi-reading grouping + expandable UI
-
----
-
-#### Files Changed (Backend)
-
-| File | Change | Impact |
-|------|--------|--------|
-| `src/lib/types/metrics.ts` | Added ReadingGroup<T>, updated BPCategory enum (7 categories), added groupCount | Type system update |
-| `src/lib/classification/blood-pressure.ts` | Replaced AHA thresholds with ESC/ESH 2018, added ISH logic | Classification logic |
-| `src/lib/services/health-data-service.ts` | Added grouping algorithm (10-min window), averaging logic, classification on grouped readings | Core service logic |
-| `src/app/api/health/metrics/route.ts` | Updated response to return ReadingGroup[] instead of HealthMetric[] | API contract change (breaking) |
-
-#### Files Changed (Frontend)
-
-| File | Change | Impact |
-|------|--------|--------|
-| `src/lib/ui/category-config.ts` | New shared category config (7 ESC categories + colors) | Shared component resource |
-| `src/components/LatestReading.tsx` | ReadingGroup support, "Show readings" expand/collapse | UI update |
-| `src/components/TimelineEntry.tsx` | ReadingGroup support, ×N badge, expand/collapse | UI update |
-| `src/components/SummaryCard.tsx` | Group count display with averaged readings subtitle | Summary metric update |
-| `src/components/Timeline.tsx` | ReadingGroup data shape integration | Component data layer |
-| `src/hooks/useHealthData.ts` | ReadingGroup response parsing | Hook update |
-| `src/app/page.tsx` | averagedGroupCount computation for display | Page logic |
-
-#### Test Coverage
-
-- `src/__tests__/blood-pressure.test.ts` — ESC/ESH thresholds (7 categories + boundaries)
-- `src/__tests__/health-data-service.test.ts` — Grouping + averaging logic
-- `src/__tests__/latest-reading.test.tsx` — Expand/collapse UI
-- `src/__tests__/timeline-entry.test.tsx` — ×N badge display
-- `src/__tests__/summary-card.test.tsx` — Group count computation
-
-**Result:** ✅ 65 tests passing, `tsc --noEmit` clean
-
----
-
-## Governance
-
-- All meaningful changes require team consensus
-- Document architectural decisions here
-- Keep history focused on work, decisions focused on direction
-
----
-
-### Visualization Decisions — Blood Pressure Display
-
-**From:** Team (Kelso, Elliot, Cox)  
-**Date:** 2026-04-06  
-**Context:** Design and implement 5 new visualization features for blood pressure timeline (connected dots, zone bands, day summaries, sparklines, range bars).
-
----
-
-#### Decision 1: Connected Dot Timeline with Tiered Visualization
-
-**What:** Two-tier dot visualization:
-- **Tier 1:** Each day as a single dot colored by its worst (highest severity) ESC category
-- **Tier 2:** Expandable to show individual reading dots connected by lines
-
-**Why:**
-- Provides instant 4-week risk trajectory at a glance (clinical essential)
-- Worst-category coloring is a strong safety signal for multi-reading days
-- Expandable drill-down respects both summary view and detailed analysis needs
-
-**Clinical Rationale:** A day with one Grade 2 reading and three Optimal readings should surface as concerning. Severity ordering ensures this.
-
-**Severity Order:** Optimal (0) → Normal (1) → High Normal (2) → Grade 1 / ISH (3) → Grade 2 (4) → Grade 3 (5)
-
-**Implementation:** Pure Tailwind + inline SVG, no charting library
-
-**Status:** ✅ Implemented in `src/components/Timeline/Timeline.tsx` and `TimelineEntry.tsx`
-
----
-
-#### Decision 2: ESC Color-Coded Zone Bands
-
-**What:** Background color bands on the timeline representing all 7 ESC blood pressure zones (Optimal → Grade 3 Hypertension).
-
-**Why:** Kelso's top clinical requirement — immediate visual risk stratification without reading numbers. Enables at-a-glance zone awareness.
-
-**Visual Design:** SVG `<rect>` elements, proportional to zone ranges (80–200 mmHg scale), semi-transparent background
-
-**Implementation:** Trivial SVG, no dependencies
-
-**Status:** ✅ Implemented in `src/components/Timeline/Timeline.tsx`
-
----
-
-#### Decision 3: Day Summary Cards with Category Distribution, Range, and Count
-
-**What:** Expandable day cards showing three integrated components:
-- **Category Distribution:** Stacked bar showing frequency of each ESC category for that day
-- **Systolic/Diastolic Range:** Min-to-max spread across all readings
-- **Reading Count:** Total individual readings (confidence indicator)
-
-**Why:** Best summary combo per Kelso clinical assessment:
-- Category distribution is the primary signal — shows zone frequency, not averages
-- Range shows variability within the day
-- Count provides statistical confidence
-- Replaces numeric averages which mask the distribution that doctors care about
-
-**Key Principle:** Category distribution > numeric averages. Shows *where* readings landed (zone frequency) not just *what* they averaged to.
-
-**Implementation:** Pure Tailwind flex layouts, no dependencies
-
-**Status:** ✅ Implemented in:
-- `src/components/Timeline/DaySummary.tsx` (orchestrator)
-- `src/components/Timeline/CategoryDistribution.tsx` (stacked bar)
-- `src/components/Timeline/RangeBar.tsx` (range visualization)
-
----
-
-#### Decision 4: Sparklines with 3+ Reading Clinical Gate
-
-**What:** Tiny inline SVG line charts showing intra-day BP trend, rendered only when a day has 3+ readings.
-
-**Why:**
-- Useful for showing measurement-to-measurement patterns within a day
-- Below 3 readings, a trend line is misleading — just 1-2 dots don't constitute a trend
-- Kelso flagged sub-3-reading sparklines as noise
-
-**Implementation:** Gate enforced in component (returns null if readings.length < 3); callers don't need to remember the rule.
-
-**Code:** ~30 lines inline SVG per component
-
-**Status:** ✅ Implemented in `src/components/Timeline/Sparkline.tsx`
-
----
-
-#### Decision 5: Range Bars with Fixed Scale
-
-**What:** Vertical bars showing min-to-max systolic and diastolic spread for each day, using a fixed 80–200 mmHg scale.
-
-**Why:**
-- Good variability indicator
-- **Must always pair with reading count** (per Kelso — variability + statistical confidence go together)
-- Fixed scale ensures consistent visual comparison across days (auto-scaling would make "110-115" look identical to "160-175")
-
-**Implementation:** Pure Tailwind, no dependencies
-
-**Status:** ✅ Implemented in `src/components/Timeline/RangeBar.tsx`
-
----
-
-#### Decision 6: Extended category-config.ts Instead of Separate Config Files
-
-**What:** Added `dotColor`, `zoneBg`, `barColor`, and `severity` fields to the existing `CategoryStyle` interface instead of creating separate configuration files.
-
-**Why:** Single source of truth for all category styling. Every component imports from one place — no risk of color drift between dot colors, zone bands, and bar segments.
-
-**Impact:** All existing consumers (LatestReading, SummaryCard, TimelineEntry) continue working unchanged since original `label` and `classes` fields are preserved.
-
-**Status:** ✅ Implemented in `src/config/category-config.ts`
-
----
-
-#### Decision 7: DaySummary as Composite Orchestrator
-
-**What:** `DaySummary.tsx` composes `CategoryDistribution`, `Sparkline`, `RangeBar`, and `TimelineEntry` into a single expandable day card.
-
-**Why:**
-- Keeps each visualization feature as a standalone component (testable, reusable for doctor view)
-- DaySummary handles day-level data aggregation and expand/collapse logic
-- Separation of concerns: feature components are feature-agnostic, orchestrator handles UX coordination
-
-**Status:** ✅ Implemented in `src/components/Timeline/DaySummary.tsx`
-
----
-
-#### Decision 8: ZoneLegend in Timeline Header (Not Separate in page.tsx)
-
-**What:** The ESC color legend is integrated directly into the Timeline component header, not placed separately in page.tsx.
-
-**Why:** The legend is contextually part of the timeline — it explains the dot colors and zone bands. Keeping it co-located with the visual it explains improves UX (no hunting for legend context).
-
-**Status:** ✅ Implemented in `src/components/Timeline/ZoneLegend.tsx` (called from Timeline header)
-
----
-
-#### Items Rejected (with Clinical Rationale)
-
-| Item | Why Rejected |
-|---|---|
-| **Daily trend arrows** (day-over-day deltas) | Kelso: False reassurance from noisy deltas; clinically harmful |
-| **Vertical line charts (separate sys/dia)** | Kelso: Reintroduces sys/dia ambiguity that ESC classification solves |
-| **Numeric daily averages (standalone)** | Kelso: Masks variability; replaced by category distribution + range |
-
-**Note:** Elliot initially flagged these as trivial to build, but Kelso's clinical expertise correctly identified them as misleading. Easy-to-build ≠ should-build.
-
----
-
-#### Tech Stack & Dependencies
-
-**Approach:** Pure Tailwind CSS + hand-rolled inline SVG
-
-**New Dependencies:** 0
-
-**Bundle Impact:** Minimal (~50KB component code, inline SVG)
-
-**Performance:** O(n) with n = readings/day (typically 3-6)
-
-**Why This Approach:**
-- Zero library churn; consistent with existing stack
-- All needed visualizations are simple enough for inline SVG + flex layouts
-- Charting libraries (D3, Chart.js, Recharts) add bundle weight, learning curve, and accessibility debt for features we won't use
-- This only works because our chart types are bounded; revisit if we need interactive zooming or complex annotations
-
-**Status:** ✅ No new dependencies added
-
----
-
-#### Implementation Summary
-
-**Files Created:**
-- `src/components/Timeline/DaySummary.tsx`
-- `src/components/Timeline/Sparkline.tsx`
-- `src/components/Timeline/RangeBar.tsx`
-- `src/components/Timeline/CategoryDistribution.tsx`
-- `src/components/Timeline/ZoneLegend.tsx`
-
-**Files Modified:**
-- `src/components/Timeline/Timeline.tsx` (zone bands + legend header)
-- `src/components/Timeline/TimelineEntry.tsx` (worst-category coloring)
-- `src/app/page.tsx` (timeline integration)
-- `src/config/category-config.ts` (extended CategoryStyle)
-
-**Test Results:** ✅ 65 tests passing, zero failures, build clean
-
-**Status:** ✅ Complete and production-ready
-
----
-
-#### Key Clinical Principles (for Future Reference)
-
-1. **Worst-category coloring is a safety signal** for multi-reading days
-2. **Category distribution > numeric averages** — shows zone frequency, not masking it
-3. **Range + count pairing is mandatory** — variability needs statistical confidence context
-4. **Sparkline 3+ threshold enforces data sufficiency** — below this, trends are noise
-
-These principles should carry forward to future metric summaries (HR zones, etc.).
-
----
-
-
-### UI Decisions — RangeBar Component
-
-**From:** Elliot (Frontend)  
-**Date:** 2025-07-15  
-**Context:** Original single blue bar in RangeBar was unclear — no scale reference and only systolic shown.
-
-#### Decision: Dual Systolic/Diastolic Bars with ESC Threshold Tick Marks
-
-**What:**
-1. **Dual bars** — Systolic (rose-400) on top, diastolic (sky-400) below. Labeled "SYS" / "DIA" in 9px gray text. Both share the same 80–200 mmHg fixed scale.
-2. **Tick marks** — Key ESC-zone-boundary thresholds (80, 120, 140, 160, 200) shown once below the bottom bar in 9px gray-400 text.
-3. **Props changed** — `min`/`max` replaced with `sysMin`/`sysMax`/`diaMin`/`diaMax`. DaySummary updated to pass all four values (already computed there).
-
-**Rationale:**
-- Warm/cool color split (rose vs sky) makes systolic/diastolic instantly distinguishable.
-- Shared scale lets users visually compare where each falls relative to ESC zones.
-- Tick marks only appear once (below bottom bar) to avoid clutter.
-
-**Status:** Implemented ✓
-
----
-
----
-
-## LLM Integration Workshop — 4-Tier Roadmap
-
-**Decision Date:** 2026-04-07  
-**Decision Maker:** Cox (Lead/Architect)  
-**Contributors:** Kelso (Medical Advisor), JD (AI Engineer)  
-**Status:** FINAL — Ready for Implementation
-
-### Executive Summary
-
-We evaluated 24 LLM integration opportunities (12 clinical from Kelso + 12 technical from JD). After merging overlaps and applying clinical value × technical feasibility × strategic fit criteria, **we have 4 Tier 1 features to build immediately** and a clear foundation layer to enable them.
-
-**The Pattern:** Code handles deterministic logic (stats, thresholds, categorization). LLM handles narrative generation, pattern explanation, and correlation insights. Cache aggressively. Fail gracefully.
-
-**Kill Signal:** If it requires embeddings, RAG infrastructure, or conversational state management — **not now**. Single-shot prompt → structured response only.
-
-See full document: `.squad/decisions/inbox/cox-llm-workshop-synthesis.md` (comprehensive implementation details, cost model, architecture principles).
-
----
-
-## UI Decisions — Timeline & Component Evolution
-
-### Decision: Condensed Timeline View as Default
-
-**Author:** Elliot (Frontend Dev)  
-**Date:** 2025-07-15  
-**Status:** Implemented
-
-**Context:** With 30 days of data, the previous full-card-per-day layout was too verbose. Jan requested a condensed timeline where each day is a single scannable line, expandable on click.
-
-**Decisions Made:**
-1. Condensed row is the default, expanded card on click — one compact line per day with dot, date, distribution bar, dominant category badge, reading count, and chevron.
-2. Dot colored by worst category, badge shows dominant category — dual signals for "worst case" and "typical" in one line.
-3. Auto-expand high-risk days (clinical safety rule) — Grade 2+, Grade 3, or Isolated Systolic days start expanded.
-4. Low-confidence fade for n<3 readings — 70% opacity visual signal for thin data.
-5. Multi-color distribution bar — stacked category colors, not single worst-category color (per Jan's preference).
-6. Expanded state lifted to Timeline parent — enables future "expand/collapse all" controls.
-7. 30-day default range — condensed view makes this scannable.
-
-**Files Changed:**
-- `src/lib/ui/category-config.ts` — Added `dominantCategory()`, `hasHighRiskCategory()`
-- `src/components/DaySummary.tsx` — Condensed + expanded dual mode
-- `src/components/Timeline.tsx` — Expanded state management, auto-expand logic
-- `src/app/page.tsx` — 30-day default, updated subtitle
-
----
-
-### Decision: Outlined Dot Markers for TimelineBar
-
-**Date:** 2025-07-18  
-**Author:** Elliot (Frontend)  
-**Status:** Implemented
-
-**Context:** The TimelineBar used thin 2px white vertical lines as tick marks to show exact reading times. Jan evaluated three visual options and chose **Option 3: White Dot with Dark Border**.
-
-**Decision:** Replaced tick lines with `w-1.5 h-1.5 rounded-full bg-white border border-gray-800` dots, centered vertically on the bar with `z-10` to layer above colored segments. `pointer-events-none` preserved tooltip fire-through.
-
-**Rationale:**
-- Dots are visually distinct from the colored bar without being harsh as full-height lines
-- Dark border ensures visibility against both light and dark segment colors
-- 6px size avoids clutter with multiple readings, large enough to see
-
----
-
-### Decision: Dual-Bar CSS Grid Layout for Collapsed Day Summary
-
-**Author:** Elliot (Frontend Developer)  
-**Date:** 2025-07-18  
-**Status:** Implemented
-
-**Context:** Cox recommended adding a compact RangeBar alongside the TimelineBar in the collapsed day row for at-a-glance systolic/diastolic spread visibility.
-
-**Changes:**
-1. Collapsed Row: Flex → CSS Grid — 6-column layout: day label | TimelineBar | RangeBar | badge | warning icon | chevron
-2. RangeBar `compact` prop — `compact={true}`: `h-2` height (matches TimelineBar), no tick labels; `compact={false}`: original `h-1.5` with labels (expanded section)
-
----
-
-### Decision: Ideal BP Reference Markers on RangeBar
-
-**From:** Elliot (Frontend Developer)  
-**Date:** 2025-07-24  
-**Status:** Implemented
-
-**Context:** Kelso identified 120/80 mmHg as ideal per ESC/ESH 2018. Users needed visual reference for where "ideal" sits on the range bar.
-
-**Decision:** Add two subtle 1px vertical reference lines at 120 mmHg (systolic) and 80 mmHg (diastolic) on every RangeBar instance. Lines are `bg-gray-400/40` — visible but not dominant. Render behind colored systolic/diastolic segments.
-
-**Rationale:**
-- **Subtle > Bold** — Reference lines don't compete with colored reading segments
-- **Same math, guaranteed alignment** — Uses identical `((value - scaleMin) / scaleRange) * 100` formula as bar segments
-- **No tooltip on 1px lines** — Scale header labels + ZoneLegend disclaimer provide context
-- **Disclaimer in ZoneLegend** — "Target: 120/80 mmHg · Consult your doctor for personal goals"
-
----
-
-### Decision: "Less Is More" — Timeline Row Simplification
-
-**From:** Elliot (Frontend Developer)  
-**Date:** 2025-07-22  
-**Status:** ✅ Implemented
-
-**Context:** The collapsed day summary had 6 grid columns (date, timeline bar, range bar, badge label, warning icon, chevron). The badge text duplicated information already encoded by:
-- Tier-1 dot color (worst category)
-- TimelineBar segment colors (per-reading categories)
-- ZoneLegend at top of timeline
-
-The separate warning icon added 20px reserved space on every row, even safe days.
-
-**Decision:**
-1. Remove badge text column — Severity is visually encoded three ways already
-2. Merge warning into dot — Grade 2+ days get slightly larger dot (`w-5 h-5`) with red ring (`ring-offset-1 ring-red-300`) instead of separate icon
-
----
-
-### Decision: LLM Prompt Debugger
-
-**From:** Elliot (Frontend Developer)  
-**Date:** 2025-07-25  
-**Status:** Implemented
-
-**What:** Added an "AI Prompt Builder" — a collapsible debug panel at the bottom of the dashboard that generates a copyable LLM prompt containing the user's blood pressure data in a structured format. Designed for pasting into ChatGPT, Copilot, or any AI assistant.
-
-**Files Created/Modified:**
-- `src/lib/llm-prompt/prompt-builder.ts` — Pure function `buildBPPrompt()` assembling 4-section prompt (Role, Goal with ESC/ESH reference, Markdown data table, Output format + disclaimer)
-- `src/components/LLMPromptDebugger.tsx` — Collapsible UI with copy-to-clipboard, token estimate, read-only textarea
-- `src/app/page.tsx` — Integrated between Timeline and disclaimer footer
-
-**Design Decisions:**
-1. Pure function in `src/lib/` — Zero UI dependencies; reusable by future API route or server-side agent
-2. Collapsed by default — Debug-tool aesthetic (gray border, monospace, small text) keeps it unobtrusive
-
----
-
-## Backend Decisions — Data & Storage
-
-### Decision: SQLite for Diary Storage
-
-**From:** Turk (Backend Developer)  
-**Date:** 2025-07-23  
-**Status:** Implemented
-
-**Context:** Users need ability to add, edit, and review diary notes for any date (past, present, future) in their health timeline. Notes provide context for LLM analysis and doctor view.
-
-**Decision:** Use **better-sqlite3** (embedded SQLite) for diary persistence with service layer and REST API.
-
-**Key Choices:**
-1. **SQLite over external DB** — Zero infrastructure, synchronous API, single-file database. Perfect for single-user health app. Migration to Postgres straightforward if needed later.
-2. **One entry per user per date** — `UNIQUE(userId, date)` constraint. Upsert semantics on POST — simpler API, no duplicate management.
-3. **Preserve `createdAt` on upsert** — INSERT OR REPLACE would reset columns. Check for existing row, carry forward `createdAt` so original timestamp survives edits.
-4. **DB file in `data/diary.db`** — Project root, gitignored. Auto-creates directory on first access.
-
----
-
-## LLM Prompt Engineering
-
-### Decision: LLM Prompt Optimization — General Context Underweighting
-
-**From:** Laverne (AI/Prompt Engineer SME)  
-**Date:** 2025-07-26  
-**Status:** Implemented
-
-**Problem:** The generated LLM prompt includes a "General Context" section with patient medical records (Dutch-language cardiologist notes, medications, diagnoses). LLMs were consistently ignoring or underweighting this section, producing generic analyses not referencing patient's specific situation.
-
-**Root Cause:**
-1. No priority signal — plain header `## General Context` without importance instruction
-2. No multilingual instruction — English prompt with Dutch context; LLM may not deeply parse foreign-language embedded content
-3. "Lost in the middle" effect — Context sat between Goal and 100+ row data table; research shows LLMs attend most to content at start/end
-4. Output format gap — 5 requested output sections never asked LLM to reference medical records
-
-**Solution:** See full implementation in `.squad/decisions/inbox/laverne-prompt-optimization.md`
-
----
-
-## User Directives
-
-### 2026-04-06T19:41: Remove Sparklines from UI
-
-**By:** Jan Tielens (via Copilot)  
-**What:** Remove sparklines from the UI — they don't add value and clutter the interface.  
-**Why:** User request — captured for team memory  
-**Status:** Pending implementation
-
+**UI Note:** Remove sparklines — don't add value, clutter interface. *Status:* Pending implementation

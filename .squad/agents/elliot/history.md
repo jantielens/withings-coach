@@ -324,3 +324,101 @@ Timeline component accepts optional date range filter for future coaching agent 
 - **Doubled gap between timeline and range bars**: `gap-x-5` → `gap-x-10` in both the DaySummary grid and the Timeline sticky scale header grid. Keeps the two bar columns visually distinct.
 - **Right-aligned "24h" and "200" labels**: Added explicit `text-right` to both right-edge scale labels in the sticky header for guaranteed right-edge alignment with the bars below.
 - **Warning icon moved to LEFT of tier-1 dot**: Added a dedicated `w-5` warning column before the dot column in the tier-1 flex layout. For Grade 2+ days: `[⚠️] [dot] [date]`. For normal days the column renders empty, reserving space so all dots stay vertically aligned. Tier-2 expanded rows get a matching `w-8` spacer (w-5 + gap-3 = 32px) to keep their dots on the same vertical line. Inter-day connector updated from `ml-[11px]` to `ml-[43px]` to center on the shifted dot position. Sticky header also received a matching `w-5` spacer.
+
+## Learnings
+
+### 2026-04-16 — Chat UI Library Research & Recommendation
+
+**Context:** Jan requested investigation of chat UI libraries for the right-side chat panel (VS Code-like split layout). Must support streaming AI responses (token-by-token rendering like ChatGPT), React 19, Tailwind CSS 4, split-pane layout.
+
+**Libraries Evaluated:**
+1. **Vercel AI SDK (`ai` + `@ai-sdk/react`)** — Provider-agnostic toolkit with streaming support via `useChat` hook. ~25 kB gzipped. React 19 native. Minimal dependencies.
+2. **@chatscope/chat-ui-kit-react** — Dedicated chat UI kit. No streaming, React 19 untested, FontAwesome dependency adds ~40–60 kB. Last update 9 months ago.
+3. **react-chat-elements** — Lightweight but too minimal. No streaming, no markdown rendering, small community.
+4. **Stream Chat React** — Enterprise chat platform (overkill for single-user AI chat). ~100+ kB. Paid at scale.
+5. **Build Custom** — `react-markdown` + custom state management. Full control but 2–3 week dev time for production-grade streaming/UX.
+
+**Split-Pane Solution:**
+- **react-resizable-panels** — Best option. Simple API, Tailwind-friendly, ~8 kB, keyboard accessible, battle-tested.
+- CSS-only alternatives possible but less refined.
+
+**Key Insights:**
+- **Streaming is non-negotiable.** UI kits like @chatscope are great for static chat, but we need token-by-token updates. Vercel AI SDK abstracts this beautifully on the client side via `useChat`.
+- **React 19 support matters.** Many libraries don't explicitly test against React 19. Vercel AI SDK is designed for it (Server Components, Suspense patterns).
+- **Bundle size trade-off:** Vercel AI SDK (~25 kB) + markdown libraries (~15 kB) + split-pane (~8 kB) = ~50 kB total new impact. Acceptable for production AI chat.
+- **TypeScript ecosystem:** Vercel AI SDK and shadcn/ui are TypeScript-first and well-documented. No prop-types or type assertion gymnastics needed.
+
+**Recommendation:** **Vercel AI SDK + shadcn/ui Chat Components + react-resizable-panels**
+- Streaming out-of-the-box (`useChat` hook handles SSE + state)
+- React 19 native (designed for App Router + Server Components)
+- Tailwind-first (shadcn/ui uses pure Tailwind, zero CSS framework)
+- Minimal bundle overhead
+- Active maintenance (Vercel backing)
+- Production-proven by many AI startups
+
+**Decision Document:** `.squad/decisions/inbox/elliot-chat-ui-libraries.md` — Contains full comparison table, pros/cons per library, example code, and next steps.
+
+**Tech Stack (Approved by Elliot):**
+- `ai` — Server-side streaming + provider abstraction
+- `@ai-sdk/react` — `useChat` hook for client state
+- `shadcn/ui` — Copy-paste Tailwind components (Chat, Message, Input)
+- `react-markdown` + `remark-gfm` + `rehype-highlight` — Markdown + code blocks
+- `react-resizable-panels` — Split-pane layout (Timeline left, Chat right)
+- `lucide-react` or `react-icons` — Icons (optional)
+
+**Estimated Implementation Time:** 3–5 days (API route + component integration).
+**Maintenance Burden:** Low (all libraries actively maintained, well-documented).
+
+
+## 2026-04-08 — Chatbot Architecture Alignment
+
+**Session:** UI Library Research & Chat UI Architecture (Cox, Elliot, JD, Turk)  
+**Output:** `.squad/decisions/inbox/elliot-chat-ui-libraries.md`
+
+### Research Summary
+
+Evaluated 5 chat UI solutions:
+
+1. **Vercel AI SDK + shadcn/ui** ✅ Recommended
+   - Native streaming, React 19 native, Tailwind-first
+   - ~25 kB bundle (SDK only)
+   - Active maintenance, production-proven
+
+2. **@chatscope/chat-ui-kit-react** — Rejected
+   - No streaming support (blocker)
+   - React 19 untested, Tailwind friction
+
+3. **react-chat-elements** — Rejected
+   - Too minimal, no streaming, small community
+
+4. **Build custom** — Rejected
+   - 2–3 weeks dev time, redundant
+
+5. **Stream Chat React** — Rejected
+   - Overkill for single-user AI chat
+
+### UI Stack Decision
+
+```
+- ai + @ai-sdk/react (streaming hooks)
+- shadcn/ui (chat components, Tailwind)
+- react-markdown + remark-gfm + rehype-highlight (rendering)
+- react-resizable-panels (split pane, ~8 kB)
+```
+
+### Split-Pane: react-resizable-panels
+
+- Simple API: `<PanelGroup>`, `<Panel>`, `<PanelResizeHandle>`
+- Tailwind-friendly, ~8 kB gzipped
+- Accessible (keyboard + ARIA)
+- Battle-tested
+
+### Timeline
+
+- Copy shadcn/ui chat components (~1 day)
+- Integrate split pane with Timeline + Chat (~2–3 days)
+- Polish, theming, responsive (~2–3 days)
+
+### Status
+
+✅ Tech stack recommended and locked. Ready for Week 2 implementation.

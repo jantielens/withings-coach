@@ -128,3 +128,52 @@
 
 **Key Learning:** When synthesizing specialist outputs (clinical × technical), use scoring matrix (Clinical Value × Technical Feasibility × Strategic Fit) to force explicit trade-off reasoning. Features that score high on only one dimension get deferred or killed. All Tier 1 features scored high on all three axes.
 
+### 2025-07-18 — Chatbot Architecture Decision
+
+**Session:** Integrated chatbot/coaching agent architecture recommendation  
+**Task:** Evaluate context-in-prompt vs RAG vs hybrid for a new chat feature; design full system architecture  
+**Outcome:** ✅ Architecture decision document delivered
+
+**Key Decisions:**
+1. **Context-in-prompt wins over RAG.** 1 year of BP data ≈ 15K tokens — fits easily in GPT-4o's 128K window. RAG would add 3+ Azure resources (AI Search, vector index, embedding model) for zero benefit at current data volumes. Revisit threshold: when total context exceeds ~80K tokens.
+2. **Minimal Azure resources:** Only 3 needed — AI Foundry (hub + project + GPT-4o deployment) + App Service. No search, no vector DB, no Redis.
+3. **Managed identity auth via `DefaultAzureCredential`** — local dev uses `az login`, production uses system-assigned managed identity on App Service. Biggest risk: must spike this first to validate it works with `@azure/openai` in Next.js server.
+4. **Single API endpoint:** `POST /api/chat` returning SSE stream. No server-side chat history (state lives in React client). Server builds full context on every request from existing services.
+5. **Reversed two prior kill decisions** — "Conversational query interface" and "RAG" were killed in LLM Workshop. Chat is now explicitly requested by Jan; RAG remains killed on technical merit (data volume too small).
+6. **3-week implementation timeline:** Week 1 = auth spike + foundation, Week 2 = chat API + UI, Week 3 = polish + deploy.
+
+**Architecture Pattern:** Server-side context assembly. The `/api/chat` route fetches health data, diary, and context notes from existing services, builds a system message with all data inline, then streams the Azure OpenAI response back. Reuses `HealthDataService`, `DiaryService`, `ContextService`, and the existing `prompt-builder.ts` logic.
+
+**Key Files:**
+- Decision doc: `.squad/decisions/inbox/cox-chatbot-architecture.md`
+- Existing prompt builder to refactor: `src/lib/llm-prompt/prompt-builder.ts`
+- New files needed: `src/app/api/chat/route.ts`, `src/hooks/useChat.ts`, `src/components/ChatPanel.tsx`
+- Azure client wrapper: `src/lib/llm/azure-openai-client.ts` (new)
+
+**Key Learning:** Prior kill decisions should be reviewed when user requirements change, but the technical reasoning must be re-evaluated independently. RAG was killed because "embeddings overkill for 100KB data" — that reasoning still holds even though the chatbot UX is now desired. Don't conflate "we want a chat UI" with "we need RAG infrastructure."
+
+
+## 2026-04-08 — Chatbot Architecture Alignment
+
+**Session:** Architecture Alignment Spike (Cox, Elliot, JD, Turk)  
+**Output:** `.squad/decisions/inbox/cox-chatbot-architecture.md`
+
+### Decisions Made
+
+- **Context-in-Prompt** — BP data (~15K tokens/year) fits in 128K context window. No RAG, no vector DB. Decided after token math: 1 year ≈ 15% of window.
+- **3 Azure Resources** — AI Foundry hub + project + deployment. App Service for hosting. No search, no Redis, no embedding pipeline.
+- **Managed Identity Auth** — DefaultAzureCredential. Local: `az login`. Prod: system-assigned identity on App Service.
+- **Single API** — `POST /api/chat` returning SSE stream. No server-side chat history.
+- **System Prompt** — Refactor `buildBPPrompt()` into `buildChatSystemMessage()`. Add conversational instructions, date awareness.
+- **Timeline** — 3 weeks to MVP. Week 1 spike managed identity, Week 2–3 implementation + deploy.
+- **Risk** — Managed identity auth is the blocker. Week 1 spike with `/api/test-llm` proof-of-concept. Fallback to API key if needed.
+
+### Team Handoffs
+
+- **Elliot:** UI library research + split-pane layout (complete)
+- **JD:** LLM patterns + conversational prompt design (complete)
+- **Turk:** Azure backend + Vercel AI SDK integration (complete)
+
+### Status
+
+✅ Architecture locked. Ready for team approval and Week 1 implementation kickoff.

@@ -17,6 +17,18 @@
 
 ## Learnings
 
+**2026-04-07 — Azure AI Foundry Backend Investigation:**
+- **Recommendation:** Use Vercel AI SDK (`ai` + `@ai-sdk/azure`) for LLM chat backend. It abstracts streaming, auth, and React integration into single `streamText()` call.
+- **Authentication:** `DefaultAzureCredential` from `@azure/identity` handles both local dev (`az login` credentials) and production (managed identity on Azure Container Apps).
+- **Streaming:** In Next.js 16 App Router, `streamText().toDataStreamResponse()` returns proper SSE stream with correct headers (`text/event-stream`, `no-cache`). No manual TransformStream setup needed.
+- **Deployment:** Azure Container Apps is ideal — serverless scaling, native managed identity, pay-as-you-go. System-assigned identity + `Cognitive Services User` RBAC role = zero secrets in code.
+- **Scope is critical:** Bearer tokens for Azure require `https://cognitiveservices.azure.com/.default` scope. This grants access to AI Foundry endpoints.
+- **Alternative SDKs evaluated:** `@azure-rest/ai-inference` (verbose manual streaming), `@azure/ai-projects` (good for agents/RAG, overkill for chat), `openai` npm package (requires more setup than Vercel AI SDK).
+- **Local dev flow:** `az login` → SDK auto-discovers credentials → calls Azure resources without secrets in .env.
+- **Production flow:** Container Apps injects MSI_ENDPOINT → managed identity silently handles token acquisition → scales to zero when idle.
+- **Cost estimate:** ~$50/month for Container Apps + LLM tokens (GPT-4 more expensive; Llama 3 competitive).
+- **Technical report written to:** `.squad/decisions/inbox/turk-azure-backend.md` — full implementation guide with code samples, architecture diagrams, deployment checklist.
+
 **2025-07-25 — General Context (Context Notes) Feature:**
 - Added `context_notes` table to the existing diary SQLite database — same `initDb()` function, second `CREATE TABLE IF NOT EXISTS`. No new DB file needed.
 - New CRUD service (`context-service.ts`) follows the exact same sql.js patterns as diary-service: positional params, `stmt.bind()/step()/get()/free()`, manual `saveDb()` after writes, singleton `getDb()`.
@@ -121,3 +133,89 @@
 - Add input validation guard to `classifyBloodPressure()` per Carla's discovery (physiological bounds: systolic ≥ 40, diastolic ≥ 20)
 - Pending Kelso validation of clinical lower bounds
 
+
+## 2026-04-08 — Chatbot Architecture Alignment
+
+**Session:** Azure Backend Integration & Streaming Investigation (Cox, Elliot, JD, Turk)  
+**Output:** `.squad/decisions/inbox/turk-azure-backend.md`
+
+### SDK Evaluation
+
+Evaluated 4 Azure/OpenAI SDKs:
+
+| SDK | Auth | Streaming | Maturity | Recommendation |
+|-----|------|-----------|----------|-----------------|
+| **Vercel AI SDK** (`ai` + `@ai-sdk/azure`) | ✅ Managed | ✅ SSE | ✅ v1.0+ | **RECOMMENDED** |
+| `@azure-rest/ai-inference` | ✅ | ✅ | ⚠️ Lower-level | Alternative |
+| `@azure/ai-projects` | ✅ | ⚠️ REST | ⚠️ Newer | Alternative |
+| `openai` (Azure config) | ✅ | ✅ | ✅ v4.0+ | Alternative (manual) |
+
+### Recommended: Vercel AI SDK
+
+**Advantages:**
+- Zero-boilerplate streaming (SSE auto-conversion)
+- Managed identity first-class support
+- React hook integration (`useChat`)
+- Battle-tested in production Vercel deployments
+- TypeScript-first, good error handling
+
+**Packages:**
+```
+npm install ai @ai-sdk/azure @azure/identity
+```
+
+### Authentication: DefaultAzureCredential
+
+**Credential Resolution (in order):**
+1. Environment variables (CI/CD)
+2. **Azure CLI** (`az login` — local dev) ✅
+3. VSCode extension (optional)
+4. **Managed identity** (App Service — prod) ✅
+
+**Local:** `az login` credentials auto-detected  
+**Prod:** System-assigned identity auto-detected (no secrets in code)
+
+### Streaming Pattern
+
+**API Route:**
+```typescript
+export async function POST(req: Request) {
+  const { messages } = await req.json();
+  
+  // Fetch context data
+  const userContext = await buildUserContext(userId);
+  
+  // Stream response
+  const result = await streamText({
+    model: azure('gpt-4o-mini'),
+    system: buildSystemPrompt(userContext),
+    messages,
+  });
+  
+  return result.toDataStreamResponse();
+}
+```
+
+**Frontend:** `useChat` hook handles SSE parsing, message state, loading UI.
+
+### Deployment
+
+- **App Service** (recommended) — Simplicity, managed identity support
+- **Container Apps** (alternative) — Full control
+- **Always On mode** — Minimize cold-start latency (~2s expected)
+
+### Risk Mitigation
+
+**High-Priority Spike:** Managed identity auth with streaming in Next.js server route
+- Proof-of-concept: `/api/test-llm` in Week 1
+- If fails, fallback to API key (not ideal, but unblocks MVP)
+
+**Other Risks (Low–Medium):**
+- Streaming behind proxy → Supported (SSE OK)
+- Token limits → Implement `MAX_READINGS`
+- Unbounded history → Cap at 20 messages
+- Cost → Estimate $1–3/month
+
+### Status
+
+✅ Azure backend strategy locked. Vercel AI SDK + DefaultAzureCredential recommended. Ready for Week 1 managed identity spike.

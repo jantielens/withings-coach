@@ -89,3 +89,128 @@ _No learnings yet — project just started._
 
 **Orchestration log:** .squad/orchestration-log/2026-04-07T15-24-53Z-jd-llm-workshop.md
 
+
+## Chatbot LLM Integration Research (2026-04-09)
+
+**Task:** Research and recommend technical approach for integrated chatbot using Azure AI Foundry  
+**Outcome:** ✅ SUCCESS — Comprehensive technical recommendation delivered
+
+**Key Findings:**
+
+1. **Context-in-Prompt vs RAG:**
+   - Analyzed typical BP data volume: 365-730 readings/year = 8-20K tokens
+   - Even 2 years of intensive monitoring fits in ~32% of 128K context window
+   - RAG is over-engineering for temporal health data (queries are time-based, not semantic)
+   - **Recommendation:** Context-in-prompt approach
+
+2. **Token Analysis:**
+   - Base prompt: ~828 tokens
+   - 1 year standard monitoring (2/day): ~15,400 tokens
+   - 1 year with diary: ~20,900 tokens
+   - 2 years with diary: ~41,000 tokens
+   - Plenty of headroom for conversation history + responses
+
+3. **Azure AI Foundry Integration:**
+   - **Stack:** Vercel AI SDK (`ai` + `@ai-sdk/azure`) with Azure OpenAI
+   - **Auth:** `@azure/identity` DefaultAzureCredential (managed identity)
+   - **Model:** GPT-4o-mini (128K context, 87% HumanEval, cost-effective)
+   - **Streaming:** Native SSE via Vercel AI SDK `streamText()` + `useChat` hook
+   - Benefits: Clean DX, built-in React hooks, conversation management, error handling
+
+4. **Conversational Prompt Design:**
+   - Restructured from one-shot analysis to persistent system prompt + dynamic context injection
+   - System prompt: Conversational health analyst role with ESC/ESH guidelines
+   - User context: Time-range filtered BP data + diary + medical records (injected per turn)
+   - Intelligent time-range detection: Parse "last week", "yesterday" from user query
+   - Token budget: ~10-25K tokens/turn (system + context + history + response)
+
+5. **Data Flow:**
+   - User query → Frontend (useChat) → API route → Parse time intent → Fetch data for period
+   - Build context → Inject into messages → Stream from Azure → Render in UI
+   - Lazy loading: Only fetch data relevant to query time range (optimize token usage)
+
+6. **Cost Estimate:**
+   - GPT-4o-mini: ~$0.0025 per turn (15K input + 500 output tokens)
+   - 100 users × 10 turns/day × 30 days = **$75/month**
+   - Significantly cheaper than full LLM feature suite ($185/month)
+
+**Technical Decisions:**
+- Use Vercel AI SDK (not low-level Azure SDK) for better DX
+- Implement intelligent time-range filtering (not full data dump every turn)
+- Default to 30 days of data for ambiguous queries
+- Conversation history: Keep recent 5-10 turns, summarize older
+- Session timeout: 1 hour idle
+
+**Risks & Mitigations:**
+- Token limit exceeded → Summarize older readings if >50K tokens
+- Auth failure → Retry logic + fallback error message
+- Poor LLM quality → Output validation + feedback mechanism
+- Slow response → Use GPT-4o-mini (fast) + optimized DB queries
+
+**Deliverable:** `.squad/decisions/inbox/jd-chatbot-llm-patterns.md`  
+**Status:** Awaiting Jan's review and approval
+
+**Open Questions for Jan:**
+1. Conversation persistence: Store in SQLite or keep ephemeral?
+2. Multi-language: Diary is Dutch, responses in English — OK?
+3. Disclaimer: Show on every response or once per session?
+4. Rate limiting: 50 messages/hour per user reasonable?
+5. Telemetry: What metrics to track?
+
+
+## 2026-04-08 — Chatbot Architecture Alignment
+
+**Session:** LLM Integration Patterns & Prompt Design (Cox, Elliot, JD, Turk)  
+**Output:** `.squad/decisions/inbox/jd-chatbot-llm-patterns.md`
+
+### LLM Strategy: Context-in-Prompt (No RAG)
+
+**Token Math:**
+- 1 year BP data: ~15K tokens (12% of 128K window)
+- 2 years + diary: ~41K tokens (32% of window)
+- **Conclusion:** RAG is unnecessary. Data fits comfortably.
+
+**Why Context-in-Prompt:**
+- Simple architecture (no vector DB, no embedding pipeline)
+- All data visible to LLM (no retrieval risk for temporal queries)
+- Always current (rebuild prompt per request)
+- Fewer moving parts = easier MVP
+
+### Conversational Prompt Design
+
+**System Prompt Structure:**
+- Role definition (health coach, data analyst)
+- ESC/ESH classification reference
+- Conversational tone ("be concise, ask clarifying questions")
+- Date awareness ("today is X, user may reference relative dates")
+- Scope boundaries ("only discuss provided data")
+- Dutch language instructions
+
+**Dynamic:** Rebuilt on EVERY request to include latest data.
+
+### Data Flow
+
+```
+User query → Detect time intent ("last week" → 7 days)
+→ Fetch BP readings, diary, context (DB)
+→ Build user context (markdown table)
+→ Construct messages: [system prompt, user context, ...history]
+→ Stream via Azure → Vercel SDK → SSE → Frontend renders tokens
+```
+
+### Model: GPT-4o-mini
+
+- 128K context window
+- Outperforms GPT-3.5 Turbo on benchmarks
+- 60% cheaper than GPT-3.5
+- Best price/performance for MVP
+
+### Token Management
+
+- Cap history: Last 20 messages sent to LLM
+- Max readings: Implement `MAX_READINGS` (default 1000)
+- Cost estimate: $1–3/month for single user
+
+### Status
+
+✅ LLM strategy and prompt design locked. Ready for implementation.
