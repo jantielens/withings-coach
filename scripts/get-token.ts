@@ -3,6 +3,12 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { createInterface } from "node:readline";
 
+// ──────────────────────────────────────────────────────────────────────────────
+// DEV/DEBUG TOOL ONLY
+// The app now handles OAuth in the browser via /api/auth/withings.
+// This script is for local development when using AUTH_MODE=static.
+// ──────────────────────────────────────────────────────────────────────────────
+
 const ENV_FILE = resolve(process.cwd(), ".env.local");
 const CALLBACK_PATH = "/api/auth/callback";
 const PORT = 3000;

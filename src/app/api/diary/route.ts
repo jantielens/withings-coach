@@ -5,6 +5,7 @@ import {
   upsertEntry,
   deleteEntry,
 } from '@/lib/services/diary-service';
+import { requireAuth } from '@/lib/auth/require-auth';
 import type { DiaryEntryInput } from '@/lib/types/diary';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -14,8 +15,11 @@ function isValidDate(s: string): boolean {
 }
 
 export async function GET(request: NextRequest) {
+  const { result: authResult, error: authError } = await requireAuth();
+  if (authError) return authError;
+
   const params = request.nextUrl.searchParams;
-  const userId = params.get('userId') ?? 'default';
+  const userId = authResult.userId;
   const date = params.get('date');
   const from = params.get('from');
   const to = params.get('to');
@@ -57,6 +61,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const { result: authResult, error: authError } = await requireAuth();
+  if (authError) return authError;
+
   let body: DiaryEntryInput;
   try {
     body = await request.json();
@@ -81,17 +88,20 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const userId = body.userId ?? 'default';
+  const userId = authResult.userId;
   const existing = await getEntry(userId, body.date);
-  const entry = await upsertEntry(body);
+  const entry = await upsertEntry({ ...body, userId });
   const status = existing ? 200 : 201;
 
   return NextResponse.json({ entry }, { status });
 }
 
 export async function DELETE(request: NextRequest) {
+  const { result: authResult, error: authError } = await requireAuth();
+  if (authError) return authError;
+
   const params = request.nextUrl.searchParams;
-  const userId = params.get('userId') ?? 'default';
+  const userId = authResult.userId;
   const date = params.get('date');
 
   if (!date) {

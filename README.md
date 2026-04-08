@@ -2,23 +2,61 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+### 1. Configure Withings API Credentials
+
+Create a Withings developer account at [developer.withings.com](https://developer.withings.com) and register an application. Set the callback URL to:
+
+```
+http://localhost:3000/api/auth/withings/callback
+```
+
+### 2. Set Up Environment Variables
+
+Copy the required environment variables into `.env.local`:
+
+```bash
+# Withings OAuth credentials (from developer.withings.com)
+WITHINGS_CLIENT_ID=your_client_id
+WITHINGS_CLIENT_SECRET=your_client_secret
+
+# iron-session encryption key (generate with: openssl rand -base64 32)
+IRON_SESSION_PASSWORD=your_32_char_or_longer_secret
+
+# Azure OpenAI (for chat feature)
+AZURE_OPENAI_RESOURCE_NAME=your_resource_name
+AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
+
+# Auth mode: 'session' (default, uses OAuth) or 'static' (dev fallback using env token)
+# AUTH_MODE=static
+# WITHINGS_ACCESS_TOKEN=your_token  # only needed if AUTH_MODE=static
+```
+
+### 3. Run the Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) — you'll be redirected to the login page where you can connect your Withings account via OAuth.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Authentication
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The app uses **Withings OAuth 2.0** with **iron-session** for encrypted cookie sessions:
+
+1. User clicks "Connect with Withings" on `/login`
+2. Redirected to Withings authorization page
+3. After approval, Withings redirects back to `/api/auth/withings/callback`
+4. The callback exchanges the auth code for access + refresh tokens
+5. Tokens are stored in an encrypted, HttpOnly session cookie
+6. Tokens auto-refresh when expired (server-side)
+
+### Dev Mode (Static Token)
+
+For development without the browser OAuth flow, set `AUTH_MODE=static` in `.env.local` and provide a `WITHINGS_ACCESS_TOKEN`. You can obtain one using:
+
+```bash
+npm run get-token
+```
 
 ## Learn More
 

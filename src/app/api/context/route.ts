@@ -4,17 +4,21 @@ import {
   createContextNote,
   deleteContextNote,
 } from '@/lib/services/context-service';
+import { requireAuth } from '@/lib/auth/require-auth';
 import type { ContextNoteInput } from '@/lib/types/context';
 
-export async function GET(request: NextRequest) {
-  const params = request.nextUrl.searchParams;
-  const userId = params.get('userId') ?? 'default';
+export async function GET(_request: NextRequest) {
+  const { result: authResult, error: authError } = await requireAuth();
+  if (authError) return authError;
 
-  const notes = await getContextNotes(userId);
+  const notes = await getContextNotes(authResult.userId);
   return NextResponse.json({ notes });
 }
 
 export async function POST(request: NextRequest) {
+  const { result: authResult, error: authError } = await requireAuth();
+  if (authError) return authError;
+
   let body: ContextNoteInput;
   try {
     body = await request.json();
@@ -32,13 +36,16 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const note = await createContextNote(body);
+  const note = await createContextNote({ ...body, userId: authResult.userId });
   return NextResponse.json({ note }, { status: 201 });
 }
 
 export async function DELETE(request: NextRequest) {
+  const { result: authResult, error: authError } = await requireAuth();
+  if (authError) return authError;
+
   const params = request.nextUrl.searchParams;
-  const userId = params.get('userId') ?? 'default';
+  const userId = authResult.userId;
   const id = params.get('id');
 
   if (!id) {

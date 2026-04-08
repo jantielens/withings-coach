@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Group, Panel, Separator } from 'react-resizable-panels';
+import { useAuth } from '@/hooks/useAuth';
 import { useHealthData } from '@/hooks/useHealthData';
 import { useDiaryEntries } from '@/hooks/useDiaryEntries';
 import { useContextNotes } from '@/hooks/useContextNotes';
@@ -15,7 +16,41 @@ import type { BloodPressureData } from '@/lib/types/metrics';
 
 export default function Home() {
   const [chatOpen, setChatOpen] = useState(false);
+  const { isLoggedIn, isLoading: isAuthLoading, logout } = useAuth();
 
+  // Show nothing while checking auth
+  if (isAuthLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-gray-50">
+        <p className="text-gray-400">Loading...</p>
+      </div>
+    );
+  }
+
+  // Redirect to login if not authenticated
+  if (!isLoggedIn) {
+    return <AuthRedirect />;
+  }
+
+  return <Dashboard chatOpen={chatOpen} setChatOpen={setChatOpen} logout={logout} />;
+}
+
+function AuthRedirect() {
+  useEffect(() => {
+    window.location.href = '/login';
+  }, []);
+  return null;
+}
+
+function Dashboard({
+  chatOpen,
+  setChatOpen,
+  logout,
+}: {
+  chatOpen: boolean;
+  setChatOpen: (fn: (prev: boolean) => boolean) => void;
+  logout: () => Promise<void>;
+}) {
   const { data, summary, isLoading, error, refresh } = useHealthData<BloodPressureData>({
     metricType: 'blood_pressure',
     dateRange: { days: 30 },
@@ -149,6 +184,16 @@ export default function Home() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
               <span className="hidden sm:inline">Chat</span>
+            </button>
+            <button
+              onClick={logout}
+              className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+              aria-label="Log out"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              <span className="hidden sm:inline">Logout</span>
             </button>
           </div>
         </div>

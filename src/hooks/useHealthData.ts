@@ -43,13 +43,17 @@ export function useHealthData<T>({
       const response = await fetch(`/api/health/metrics?${params}`);
 
       if (!response.ok) {
+        if (response.status === 401) {
+          // Session expired or not authenticated — redirect to login
+          window.location.href = '/login';
+          return;
+        }
+
         const errorBody = await response.text();
         throw new Error(
-          response.status === 401
-            ? 'Authentication failed. Check your access token.'
-            : response.status === 502
-              ? 'Could not reach Withings API. Try again later.'
-              : `Failed to fetch health data (${response.status}): ${errorBody}`
+          response.status === 502
+            ? 'Could not reach Withings API. Try again later.'
+            : `Failed to fetch health data (${response.status}): ${errorBody}`
         );
       }
 

@@ -32,7 +32,6 @@ export function useDiaryEntries({
       const params = new URLSearchParams({
         from: startDate,
         to: endDate,
-        userId: 'default',
       });
       const response = await fetch(`/api/diary?${params}`);
       if (!response.ok) {
@@ -65,7 +64,7 @@ export function useDiaryEntries({
         const response = await fetch('/api/diary', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: 'default', date, text }),
+          body: JSON.stringify({ date, text }),
         });
         if (!response.ok) {
           throw new Error(`Failed to save diary entry (${response.status})`);
@@ -80,7 +79,7 @@ export function useDiaryEntries({
   const deleteEntry = useCallback(
     async (date: string) => {
       try {
-        const params = new URLSearchParams({ date, userId: 'default' });
+        const params = new URLSearchParams({ date });
         const response = await fetch(`/api/diary?${params}`, { method: 'DELETE' });
         if (!response.ok) {
           throw new Error(`Failed to delete diary entry (${response.status})`);

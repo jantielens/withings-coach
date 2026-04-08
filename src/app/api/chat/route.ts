@@ -4,7 +4,7 @@ import { createAzureAIClient, getDeploymentName, AzureConfigError } from '@/lib/
 import { detectTimeRange } from '@/lib/chat/time-range';
 import { buildChatSystemPrompt, type ChatContext } from '@/lib/chat/system-prompt';
 import { HealthDataService } from '@/lib/services/health-data-service';
-import { StaticTokenAuth } from '@/lib/auth/static-token-auth';
+import { requireAuth, WithingsTokenRefreshError } from '@/lib/auth/require-auth';
 import { getMetricConfig } from '@/lib/registry/metric-registry';
 import { getEntriesInRange } from '@/lib/services/diary-service';
 import { getContextNotes } from '@/lib/services/context-service';
@@ -56,6 +56,10 @@ export async function POST(request: NextRequest) {
     .join(' ');
 
   try {
+    // Authenticate
+    const { result: authResult, error: authError } = await requireAuth();
+    if (authError) return authError;
+
     // Determine time range from the latest user message
     const dateRange = detectTimeRange(lastUserText);
     const dayCount =
@@ -66,8 +70,7 @@ export async function POST(request: NextRequest) {
 
     // Fetch health data, diary entries, and context notes in parallel
     const bpConfig = getMetricConfig(MetricType.BLOOD_PRESSURE)!;
-    const auth = new StaticTokenAuth();
-    const healthService = new HealthDataService(bpConfig.adapter, auth);
+    const healthService = new HealthDataService(bpConfig.adapter, authResult.auth);
 
     const [bpResponse, diaryEntries, contextNotes] = await Promise.all([
       healthService.getMetrics<BloodPressureData>(
@@ -78,8 +81,8 @@ export async function POST(request: NextRequest) {
         },
         false
       ),
-      getEntriesInRange('default', dateRange.from, dateRange.to),
-      getContextNotes('default'),
+      getEntriesInRange(authResult.userId, dateRange.from, dateRange.to),
+      getContextNotes(authResult.userId),
     ]);
 
     const readings = bpResponse.metrics as ReadingGroup<BloodPressureData>[];
@@ -112,6 +115,13 @@ export async function POST(request: NextRequest) {
 
     return result.toUIMessageStreamResponse();
   } catch (error) {
+    if (error instanceof WithingsTokenRefreshError) {
+      return NextResponse.json(
+        { error: 'Session expired. Please log in again.' },
+        { status: 401 }
+      );
+    }
+
     if (error instanceof AzureConfigError) {
       return NextResponse.json(
         { error: error.message },

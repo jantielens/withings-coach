@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { HealthDataService } from '@/lib/services/health-data-service';
-import { StaticTokenAuth } from '@/lib/auth/static-token-auth';
+import { requireAuth, WithingsTokenRefreshError } from '@/lib/auth/require-auth';
 import {
   getMetricConfig,
   isValidMetricType,
@@ -58,9 +58,12 @@ export async function GET(request: NextRequest) {
   const includeSummary =
     summaryParam !== null ? summaryParam !== 'false' : METRIC_DEFAULTS.defaultSummary;
 
+  // Authenticate
+  const { result: authResult, error: authError } = await requireAuth();
+  if (authError) return authError;
+
   try {
-    const auth = new StaticTokenAuth();
-    const service = new HealthDataService(metricConfig.adapter, auth);
+    const service = new HealthDataService(metricConfig.adapter, authResult.auth);
     const response = await service.getMetrics(
       type as MetricType,
       dateRange,
@@ -69,6 +72,13 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(response);
   } catch (error) {
+    if (error instanceof WithingsTokenRefreshError) {
+      return NextResponse.json(
+        { error: 'Session expired. Please log in again.' },
+        { status: 401 }
+      );
+    }
+
     if (error instanceof WithingsAuthError) {
       return NextResponse.json(
         { error: 'Authentication failed. Check your Withings access token.' },

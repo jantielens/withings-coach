@@ -17,7 +17,7 @@ export function useContextNotes(): UseContextNotesResult {
   const fetchNotes = useCallback(async () => {
     setIsLoading(true);
     try {
-      const params = new URLSearchParams({ userId: 'default' });
+      const params = new URLSearchParams();
       const response = await fetch(`/api/context?${params}`);
       if (!response.ok) {
         // API may not exist yet (Turk building in parallel) — fail silently
@@ -44,7 +44,7 @@ export function useContextNotes(): UseContextNotesResult {
         const response = await fetch('/api/context', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: 'default', text }),
+          body: JSON.stringify({ text }),
         });
         if (!response.ok) {
           throw new Error(`Failed to create context note (${response.status})`);
@@ -59,7 +59,7 @@ export function useContextNotes(): UseContextNotesResult {
   const deleteNote = useCallback(
     async (id: string) => {
       try {
-        const params = new URLSearchParams({ id, userId: 'default' });
+        const params = new URLSearchParams({ id });
         const response = await fetch(`/api/context?${params}`, { method: 'DELETE' });
         if (!response.ok) {
           throw new Error(`Failed to delete context note (${response.status})`);
