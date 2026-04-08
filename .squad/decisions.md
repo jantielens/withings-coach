@@ -2,11 +2,33 @@
 
 ## Active Decisions
 
+### Chatbot Implementation — Code Review (2026-04-08)
+
+**From:** Cox (Lead / Architect)  
+**Status:** ✅ **2 Critical Bugs Fixed; Ready for Merge**
+
+**Verdict:** Architecture is faithfully implemented. All issues identified in review have been resolved by JD.
+
+**Critical Bugs (Fixed):**
+1. Stream format mismatch — Changed `toTextStreamResponse()` → `toUIMessageStreamResponse()` in route.ts:97
+2. Message format mismatch — Imported and applied `convertToModelMessages()` in route.ts:89-94
+
+**Medium Issues (Fixed):**
+3. Added `maxTokens: 2048` constraint
+4. Added `temperature: 0.5` for medical data consistency
+5. Added message count guard (max 50 messages per request)
+
+**Remaining:** Error classification (fragile string matching) and API route test coverage — deferred to fast-follow.
+
+**Decision:** All 5 issues resolved. Code is ready for merge. Tests: 103 passing.
+
+---
+
 ### Chatbot Feature Architecture — Context-in-Prompt & Vercel AI SDK Integration
 
 **Session:** 2026-04-08 Chatbot Architecture Alignment  
 **Agents:** Cox (Lead), Elliot (Frontend), JD (AI Engineer), Turk (Backend)  
-**Status:** ✅ **Alignment Complete — Ready for Team Review & Implementation**
+**Status:** ✅ **Implementation Complete — Chat Feature Live**
 
 ---
 
