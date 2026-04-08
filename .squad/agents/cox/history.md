@@ -177,3 +177,15 @@
 ### Status
 
 ✅ Architecture locked. Ready for team approval and Week 1 implementation kickoff.
+
+### 2025-07-18 — Chatbot Implementation Code Review
+
+**Session:** Post-implementation code review of full chatbot feature (6 implementation files, 3 test files)  
+**Output:** `.squad/decisions/inbox/cox-chat-review.md`
+
+**Findings:**
+- **2 critical bugs in route.ts** — (1) `toTextStreamResponse()` used but `useChat()` defaults to `DefaultChatTransport` which expects UI message stream format; must use `toUIMessageStreamResponse()`. (2) Route passes `UIMessage[]` (with `parts`) to `streamText` which expects `ModelMessage[]` (with `content`); must use `convertToModelMessages()` to convert.
+- **5 medium issues** — no `maxTokens`/`temperature` on streamText, no message count guard, fragile error classification via string matching, no API route test.
+- **Everything else is solid** — architecture alignment is faithful (context-in-prompt, single endpoint, managed identity, split-pane UI). Time range detection is well-tested. System prompt is well-structured with safety disclaimers. Chat UI handles all states correctly.
+
+**Key Learning:** Always verify the actual wire protocol between client and server when using framework abstractions. The Vercel AI SDK v6 changed from `toDataStreamResponse()` to `toUIMessageStreamResponse()` and from simple `{ role, content }` messages to `UIMessage` with `parts`. Type casts (`as Array<{ role, content }>`) hide these mismatches at compile time but crash at runtime. When reviewing streaming integrations, trace the actual bytes: what the client sends, what the server receives, what format the response uses. TypeScript types are documentation, not runtime guarantees.

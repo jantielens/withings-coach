@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import type { ContextNote } from '@/lib/types/context';
 
-const MAX_CHARS = 500;
+const MAX_CHARS = 2000;
 const PLACEHOLDER = 'Add background context (e.g., medical history, medications, goals...)';
 
 interface ContextNotesPanelProps {
@@ -99,7 +99,7 @@ export function ContextNotesPanel({ notes, onCreate, onDelete, isLoading }: Cont
               }}
               onKeyDown={handleKeyDown}
               placeholder={PLACEHOLDER}
-              rows={2}
+              rows={4}
               maxLength={MAX_CHARS}
               className="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-xs text-gray-700 leading-relaxed resize-none focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
             />

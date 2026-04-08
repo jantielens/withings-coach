@@ -141,7 +141,7 @@ function buildDataTable(
     const { systolic, diastolic, pulse, category } = group.average;
     const label = categoryConfig[category].label;
     const notes = group.isGrouped
-      ? `Avg of ${group.readings.length} (${group.readings.map(r => `${r.data.systolic}/${r.data.diastolic}`).join(', ')})`
+      ? `Avg of ${group.readings.length} (1st excl.) (${group.readings.map(r => `${r.data.systolic}/${r.data.diastolic}`).join(', ')})`
       : 'Single';
     const rawDiary = diaryByDate.get(date) ?? '';
     const diary = rawDiary ? sanitizeDiaryText(rawDiary) : '';

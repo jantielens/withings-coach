@@ -11,12 +11,20 @@
     "get-token": "npx tsx scripts/get-token.ts"
   },
   "dependencies": {
+    "@ai-sdk/azure": "^3.0.53",
+    "@ai-sdk/react": "^3.0.155",
+    "@azure/identity": "^4.13.1",
+    "ai": "^6.0.153",
     "next": "16.2.2",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-markdown": "^10.1.0",
+    "react-resizable-panels": "^4.9.0",
+    "remark-gfm": "^4.0.1",
     "sql.js": "^1.14.1"
   },
   "devDependencies": {
+    "@bradygaster/squad-cli": "^0.9.4-insider.1",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

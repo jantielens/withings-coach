@@ -1,4 +1,5 @@
-// 📌 Tests updated for ESC/ESH 2018 classification and ReadingGroup support.
+// 📌 Tests updated for ESC/ESH 2018 classification, ReadingGroup support,
+//    and ESC/ESH first-reading exclusion averaging.
 
 import {
   MetricType,
@@ -10,6 +11,7 @@ import {
 } from '@/lib/types/metrics';
 import { DataSourceAdapter } from '@/lib/adapters/data-source-adapter';
 import { AuthProvider } from '@/lib/types/auth';
+import { groupReadings } from '@/lib/services/health-data-service';
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
@@ -156,6 +158,86 @@ describe('HealthDataService', () => {
         const metric = makeBPMetric({ systolic, diastolic, category: expected });
         expect(metric.data.category).toBe(expected);
       });
+    });
+  });
+
+  describe('first-reading exclusion (ESC/ESH guideline averaging)', () => {
+    it('excludes the first (earliest) reading from the average when 3 readings in a group', () => {
+      const baseTime = new Date('2025-07-18T08:00:00Z');
+      const readings = [
+        makeBPMetric({
+          id: 'r1',
+          timestamp: new Date(baseTime.getTime()).toISOString(),
+          systolic: 150, diastolic: 95, pulse: 90,
+        }),
+        makeBPMetric({
+          id: 'r2',
+          timestamp: new Date(baseTime.getTime() + 2 * 60000).toISOString(),
+          systolic: 130, diastolic: 85, pulse: 75,
+        }),
+        makeBPMetric({
+          id: 'r3',
+          timestamp: new Date(baseTime.getTime() + 4 * 60000).toISOString(),
+          systolic: 128, diastolic: 82, pulse: 72,
+        }),
+      ];
+
+      const groups = groupReadings(readings);
+      expect(groups).toHaveLength(1);
+
+      const group = groups[0];
+      // All 3 readings preserved
+      expect(group.readings).toHaveLength(3);
+      // Average excludes the first reading (150/95/90), uses only r2+r3
+      expect(group.average.systolic).toBe(Math.round((130 + 128) / 2)); // 129
+      expect(group.average.diastolic).toBe(Math.round((85 + 82) / 2)); // 84
+      expect(group.average.pulse).toBe(Math.round((75 + 72) / 2)); // 74
+    });
+
+    it('excludes the first reading from the average when 2 readings in a group', () => {
+      const baseTime = new Date('2025-07-18T08:00:00Z');
+      const readings = [
+        makeBPMetric({
+          id: 'r1',
+          timestamp: new Date(baseTime.getTime()).toISOString(),
+          systolic: 145, diastolic: 92, pulse: 85,
+        }),
+        makeBPMetric({
+          id: 'r2',
+          timestamp: new Date(baseTime.getTime() + 3 * 60000).toISOString(),
+          systolic: 130, diastolic: 84, pulse: 74,
+        }),
+      ];
+
+      const groups = groupReadings(readings);
+      expect(groups).toHaveLength(1);
+
+      const group = groups[0];
+      expect(group.readings).toHaveLength(2);
+      // Average is just the second reading
+      expect(group.average.systolic).toBe(130);
+      expect(group.average.diastolic).toBe(84);
+      expect(group.average.pulse).toBe(74);
+    });
+
+    it('uses the single reading as-is when only one reading in a group', () => {
+      const readings = [
+        makeBPMetric({
+          id: 'r1',
+          timestamp: '2025-07-18T08:00:00Z',
+          systolic: 140, diastolic: 90, pulse: 80,
+        }),
+      ];
+
+      const groups = groupReadings(readings);
+      expect(groups).toHaveLength(1);
+
+      const group = groups[0];
+      expect(group.readings).toHaveLength(1);
+      expect(group.isGrouped).toBe(false);
+      expect(group.average.systolic).toBe(140);
+      expect(group.average.diastolic).toBe(90);
+      expect(group.average.pulse).toBe(80);
     });
   });
 });

@@ -130,3 +130,32 @@
 
 **Orchestration log:** .squad/orchestration-log/2026-04-07T15-24-53Z-kelso-llm-workshop.md
 
+### BP Session Averaging — Clinical Correction (2025-07-18)
+
+**Session:** First-Reading Effect Analysis & Averaging Method Review  
+**Task:** Evaluate whether simple mean of 3 readings is optimal, or whether first-reading exclusion is better  
+**Outcome:** ✅ CORRECTION ISSUED
+
+**Key finding — prior error corrected:**
+- My 2026-04-06 decision stated "mean of all 3 readings (gold standard)" and "drop-first-take-last-2 is outdated"
+- This was **incorrect**. ESC/ESH 2018, ESC/ESH 2023, AND AHA/ACC 2017 all explicitly recommend discarding the first reading within each session
+- The "drop first reading, average remaining" method is the current international consensus, not outdated
+
+**Evidence summary:**
+- ESC/ESH 2018 pp. 3035–3036: Recommends discarding first reading within duplicate sessions
+- ESC/ESH 2023: Explicitly states "first reading should be excluded from analysis"
+- AHA/ACC 2017 Section 4.2: "Discard the first home BP reading of each session"
+- First-reading effect magnitude: 3–5 mmHg systolic in literature; ~2 mmHg in Jan's data
+
+**Jan's data analysis (11 sessions):**
+- Average first-reading delta: +2.0 mmHg systolic, +0.8 mmHg diastolic (excluding one reverse-pattern outlier)
+- 70% of sessions showed first reading higher than subsequent readings
+- No ESC/ESH category changes would result from switching method (Jan's effect is modest)
+- His measurement technique is actually better than average (smaller first-reading effect)
+
+**Recommendation:** Change `buildReadingGroup()` to drop first reading when ≥2 readings in session, average remaining. This aligns with all major guidelines.
+
+**Decision document:** `.squad/decisions/inbox/kelso-bp-averaging.md`
+
+**Clinical lesson:** Always verify methodology claims against the actual guideline text. "Gold standard" assertions need source citations. I got this one wrong and needed to correct it — that's how evidence-based medicine works.
+

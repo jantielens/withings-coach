@@ -134,14 +134,17 @@ export function groupReadings(
 function buildReadingGroup(
   readings: HealthMetric<BloodPressureData>[]
 ): ReadingGroup<BloodPressureData> {
+  // Per ESC/ESH 2018/2023 & AHA/ACC 2017: drop first reading, average remaining
+  const readingsForAverage = readings.length >= 2 ? readings.slice(1) : readings;
+
   const avgSystolic = Math.round(
-    readings.reduce((s, r) => s + r.data.systolic, 0) / readings.length
+    readingsForAverage.reduce((s, r) => s + r.data.systolic, 0) / readingsForAverage.length
   );
   const avgDiastolic = Math.round(
-    readings.reduce((s, r) => s + r.data.diastolic, 0) / readings.length
+    readingsForAverage.reduce((s, r) => s + r.data.diastolic, 0) / readingsForAverage.length
   );
   const avgPulse = Math.round(
-    readings.reduce((s, r) => s + r.data.pulse, 0) / readings.length
+    readingsForAverage.reduce((s, r) => s + r.data.pulse, 0) / readingsForAverage.length
   );
 
   const category = classifyBloodPressure(avgSystolic, avgDiastolic);
