@@ -8,6 +8,7 @@ import {
 import { DateRange, MetricType } from '@/lib/types/metrics';
 import { WithingsAuthError } from '@/lib/adapters/withings-adapter';
 import { METRIC_DEFAULTS } from '@/config/metrics';
+import { metricsCache } from '@/lib/services/metrics-cache';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -58,9 +59,17 @@ export async function GET(request: NextRequest) {
   const includeSummary =
     summaryParam !== null ? summaryParam !== 'false' : METRIC_DEFAULTS.defaultSummary;
 
+  const shouldRefresh = searchParams.get('refresh') === 'true';
+
   // Authenticate
   const { result: authResult, error: authError } = await requireAuth();
   if (authError) return authError;
+
+  // Invalidate cache on explicit refresh
+  if (shouldRefresh) {
+    metricsCache.invalidateUser(authResult.userId);
+    console.log(`[Cache] Invalidated all entries for user ${authResult.userId} (refresh)`);
+  }
 
   try {
     const service = new HealthDataService(metricConfig.adapter, authResult.auth, authResult.userId);

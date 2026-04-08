@@ -24,6 +24,7 @@ export function useHealthData<T>({
   const [summary, setSummary] = useState<MetricSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [forceRefresh, setForceRefresh] = useState(false);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -39,6 +40,11 @@ export function useHealthData<T>({
         from: from.toISOString(),
         to: to.toISOString(),
       });
+
+      if (forceRefresh) {
+        params.set('refresh', 'true');
+        setForceRefresh(false);
+      }
 
       const response = await fetch(`/api/health/metrics?${params}`);
 
@@ -67,11 +73,15 @@ export function useHealthData<T>({
     } finally {
       setIsLoading(false);
     }
-  }, [metricType, dateRange.days]);
+  }, [metricType, dateRange.days, forceRefresh]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  return { data, summary, isLoading, error, refresh: fetchData };
+  const refresh = useCallback(() => {
+    setForceRefresh(true);
+  }, []);
+
+  return { data, summary, isLoading, error, refresh };
 }
