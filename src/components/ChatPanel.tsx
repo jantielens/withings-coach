@@ -21,7 +21,7 @@ function getMessageText(message: UIMessage): string {
 }
 
 export function ChatPanel() {
-  const { messages, sendMessage, stop, status, error, clearError } = useChat();
+  const { messages, setMessages, sendMessage, stop, status, error, clearError } = useChat();
   const [input, setInput] = useState('');
   const [debugMode, setDebugMode] = useState(false);
   const [debugPrompt, setDebugPrompt] = useState<string | null>(null);
@@ -73,6 +73,18 @@ export function ChatPanel() {
           <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
         </svg>
         <h2 className="text-sm font-semibold text-gray-900 flex-1">Coach Chat</h2>
+        {messages.length > 0 && (
+          <button
+            onClick={() => { setMessages([]); setDebugPrompt(null); }}
+            className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded p-1 transition-colors"
+            aria-label="New chat"
+            title="New chat"
+          >
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
+            </svg>
+          </button>
+        )}
         <button
           onClick={() => { setDebugMode((v) => !v); if (debugMode) setDebugPrompt(null); }}
           className={`text-xs px-2 py-1 rounded transition-colors ${
