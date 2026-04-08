@@ -139,7 +139,7 @@ export function TimelineBar({ readings }: TimelineBarProps) {
                 style={{ left: `${dotRelativePct}%` }}
               >
                 <div className="bg-gray-900 text-white text-xs rounded-md px-2.5 py-1.5 whitespace-nowrap shadow-lg">
-                  <div className="font-semibold">{formatTime(seg.group.timestamp)}</div>
+                  <div suppressHydrationWarning className="font-semibold">{formatTime(seg.group.timestamp)}</div>
                   {seg.group.isGrouped ? (
                     <div className="tabular-nums">
                       Avg of {readingCount}: {seg.group.average.systolic}/{seg.group.average.diastolic} mmHg

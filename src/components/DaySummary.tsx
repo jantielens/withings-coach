@@ -116,7 +116,7 @@ export function DaySummary({ dayReadings, isFirst, isLast, expanded, onToggle, d
             onKeyDown={handleKeyDown}
           >
             {/* Day label with optional warning icon */}
-            <span className="text-sm font-semibold text-gray-800 truncate">
+            <span suppressHydrationWarning className="text-sm font-semibold text-gray-800 truncate">
               {dayLabel}
             </span>
 

@@ -118,7 +118,7 @@ export function LatestReading({ reading, dayCount }: LatestReadingProps) {
           {config.label}
         </span>
       </div>
-      <p className="text-sm text-gray-400 mt-4">
+      <p suppressHydrationWarning className="text-sm text-gray-400 mt-4">
         {formatTimestamp(reading.timestamp)}
       </p>
 

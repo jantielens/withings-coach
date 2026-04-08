@@ -70,7 +70,7 @@ export function TimelineEntry({ reading }: TimelineEntryProps) {
         } : undefined}
       >
         <div className="flex items-center gap-3 min-w-0 flex-wrap">
-          <span className="text-xs text-gray-400 w-16 tabular-nums flex-shrink-0">
+          <span suppressHydrationWarning className="text-xs text-gray-400 w-16 tabular-nums flex-shrink-0">
             {formatTime(reading.timestamp)}
           </span>
           <div className="flex items-center gap-1.5">
