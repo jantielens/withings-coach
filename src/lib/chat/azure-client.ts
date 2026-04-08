@@ -26,12 +26,16 @@ export function createAzureAIClient() {
   const scope = 'https://cognitiveservices.azure.com/.default';
   const tokenProvider = getBearerTokenProvider(credential, scope);
 
-  // Inject managed identity bearer token via custom fetch wrapper
+  // The SDK requires an apiKey to pass validation, but we override auth
+  // via a custom fetch that injects the managed identity bearer token.
+  // The dummy key is never sent — our fetch replaces the auth header.
   return createAzure({
     resourceName,
+    apiKey: 'managed-identity',
     fetch: async (url, init) => {
       const token = await tokenProvider();
       const headers = new Headers(init?.headers);
+      headers.delete('api-key');
       headers.set('Authorization', `Bearer ${token}`);
       return fetch(url, { ...init, headers });
     },
