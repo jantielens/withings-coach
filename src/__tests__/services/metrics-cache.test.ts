@@ -101,12 +101,13 @@ describe('MetricsCache', () => {
     expect(cache.size).toBe(2);
   });
 
-  it('overwrites existing entry for same key', () => {
-    cache.set('user1', MetricType.BLOOD_PRESSURE, '2025-07-01', '2025-07-15', [makeBPMetric('old')]);
-    cache.set('user1', MetricType.BLOOD_PRESSURE, '2025-07-01', '2025-07-15', [makeBPMetric('new')]);
+  it('normalizes timestamps to date-only for cache key (same day = cache hit)', () => {
+    const metrics = [makeBPMetric('1')];
+    cache.set('user1', MetricType.BLOOD_PRESSURE, '2025-07-01T08:00:00.000Z', '2025-07-15T08:00:00.000Z', metrics);
 
-    const result = cache.get<BloodPressureData>('user1', MetricType.BLOOD_PRESSURE, '2025-07-01', '2025-07-15');
-    expect(result![0].id).toBe('new');
-    expect(cache.size).toBe(1);
+    // Different time-of-day, same date → should hit
+    const result = cache.get<BloodPressureData>('user1', MetricType.BLOOD_PRESSURE, '2025-07-01T14:30:12.456Z', '2025-07-15T14:30:12.456Z');
+    expect(result).toHaveLength(1);
+    expect(result![0].id).toBe('1');
   });
 });

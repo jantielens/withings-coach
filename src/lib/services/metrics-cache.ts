@@ -21,7 +21,11 @@ class MetricsCache {
   }
 
   private buildKey(userId: string, type: MetricType, fromISO: string, toISO: string): string {
-    return `${userId}:${type}:${fromISO}:${toISO}`;
+    // Normalize to date-only (YYYY-MM-DD) so requests within the same day hit the cache.
+    // useHealthData computes `new Date()` on each call, producing different milliseconds.
+    const fromDay = fromISO.slice(0, 10);
+    const toDay = toISO.slice(0, 10);
+    return `${userId}:${type}:${fromDay}:${toDay}`;
   }
 
   get<T>(userId: string, type: MetricType, fromISO: string, toISO: string): HealthMetric<T>[] | null {
