@@ -136,10 +136,14 @@ WITHINGS_CLIENT_SECRET=<your-withings-client-secret>
 AZURE_OPENAI_RESOURCE_NAME=<your-ai-foundry-resource-name>
 AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
 
-# ━━━ Azure Service Principal (from Step 3) ━━━━━━━━━━━━━━━━━━━━━━━━━
-AZURE_CLIENT_ID=<application-client-id>
-AZURE_CLIENT_SECRET=<client-secret-value>
-AZURE_TENANT_ID=<directory-tenant-id>
+# ━━━ Azure AI Auth (pick ONE) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Option A: API Key (simplest — get from Azure Portal → AI Foundry → Keys)
+AZURE_OPENAI_API_KEY=<your-api-key>
+
+# Option B: Service Principal (from Step 3 — leave API key empty to use this)
+# AZURE_CLIENT_ID=<application-client-id>
+# AZURE_CLIENT_SECRET=<client-secret-value>
+# AZURE_TENANT_ID=<directory-tenant-id>
 ```
 
 Generate the iron-session password:

@@ -134,12 +134,17 @@ AZURE_OPENAI_RESOURCE_NAME=
 # Model deployment name (e.g. "gpt-4o")
 AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
 
-# ━━━ REQUIRED: Azure Service Principal ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# For AI Foundry auth from a non-Azure host.
-# See DEPLOY.md Step 3 for how to create these.
-AZURE_CLIENT_ID=
-AZURE_CLIENT_SECRET=
-AZURE_TENANT_ID=
+# ━━━ REQUIRED: Azure AI Auth (pick ONE option) ━━━━━━━━━━━━━━━━━━━━━
+#
+# Option A: API Key (simplest)
+# Get from: Azure Portal → your AI Foundry resource → Keys and Endpoint
+AZURE_OPENAI_API_KEY=
+#
+# Option B: Service Principal (if you prefer managed credentials)
+# See DEPLOY.md Step 3. Leave AZURE_OPENAI_API_KEY empty to use this.
+# AZURE_CLIENT_ID=
+# AZURE_CLIENT_SECRET=
+# AZURE_TENANT_ID=
 ENVEOF
 
   ok ".env template created at ${ENV_FILE}"

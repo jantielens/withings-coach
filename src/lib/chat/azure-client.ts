@@ -5,30 +5,37 @@ import {
 } from '@azure/identity';
 
 /**
- * Creates a configured Azure AI client using managed identity auth.
+ * Creates a configured Azure AI client.
+ *
+ * Auth modes (checked in order):
+ *  1. API key — if AZURE_OPENAI_API_KEY is set, uses it directly (simplest)
+ *  2. DefaultAzureCredential — service principal env vars, managed identity, etc.
  *
  * Required environment variables:
  *  - AZURE_OPENAI_RESOURCE_NAME — Azure AI Foundry resource name (e.g. 'my-ai-foundry')
  *  - AZURE_OPENAI_DEPLOYMENT_NAME — model deployment name (default: 'gpt-4o')
- *
- * These are read at runtime, not build time.
  */
 export function createAzureAIClient() {
   const resourceName = process.env.AZURE_OPENAI_RESOURCE_NAME;
   if (!resourceName) {
     throw new AzureConfigError(
       'AZURE_OPENAI_RESOURCE_NAME is not set. ' +
-        'Add it to .env.local to connect to Azure AI Foundry.'
+        'Add it to .env to connect to Azure AI Foundry.'
     );
   }
 
+  const apiKey = process.env.AZURE_OPENAI_API_KEY;
+
+  // API key auth — simplest, no identity libraries needed
+  if (apiKey) {
+    return createAzure({ resourceName, apiKey });
+  }
+
+  // DefaultAzureCredential — service principal, managed identity, etc.
   const credential = new DefaultAzureCredential();
   const scope = 'https://cognitiveservices.azure.com/.default';
   const tokenProvider = getBearerTokenProvider(credential, scope);
 
-  // The SDK requires an apiKey to pass validation, but we override auth
-  // via a custom fetch that injects the managed identity bearer token.
-  // The dummy key is never sent — our fetch replaces the auth header.
   return createAzure({
     resourceName,
     apiKey: 'managed-identity',
