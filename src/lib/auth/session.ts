@@ -15,7 +15,7 @@ export const sessionOptions: SessionOptions = {
   password: process.env.IRON_SESSION_PASSWORD ?? '',
   cookieName: 'withings-coach-session',
   cookieOptions: {
-    secure: process.env.NODE_ENV === 'production',
+    secure: process.env.NEXT_PUBLIC_BASE_URL?.startsWith('https') ?? false,
     httpOnly: true,
     sameSite: 'lax' as const,
   },
