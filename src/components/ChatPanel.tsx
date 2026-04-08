@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from '@ai-sdk/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -23,10 +23,31 @@ function getMessageText(message: UIMessage): string {
 export function ChatPanel() {
   const { messages, sendMessage, stop, status, error, clearError } = useChat();
   const [input, setInput] = useState('');
+  const [debugMode, setDebugMode] = useState(false);
+  const [debugPrompt, setDebugPrompt] = useState<string | null>(null);
+  const [debugLoading, setDebugLoading] = useState(false);
+  const [debugExpanded, setDebugExpanded] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const isLoading = status === 'submitted' || status === 'streaming';
+
+  // Fetch the system prompt for the latest user message when debug mode is on
+  const fetchDebugPrompt = useCallback(async (query: string) => {
+    if (!debugMode) return;
+    setDebugLoading(true);
+    try {
+      const res = await fetch(`/api/chat/prompt?query=${encodeURIComponent(query)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setDebugPrompt(data.prompt);
+      }
+    } catch {
+      // Silently fail — debug is optional
+    } finally {
+      setDebugLoading(false);
+    }
+  }, [debugMode]);
 
   // Auto-scroll to bottom on new messages or streaming
   useEffect(() => {
@@ -41,6 +62,7 @@ export function ChatPanel() {
     if (!trimmed || isLoading) return;
     setInput('');
     sendMessage({ text: trimmed });
+    fetchDebugPrompt(trimmed);
   };
 
   return (
@@ -50,11 +72,47 @@ export function ChatPanel() {
         <svg className="h-4 w-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
         </svg>
-        <h2 className="text-sm font-semibold text-gray-900">Coach Chat</h2>
+        <h2 className="text-sm font-semibold text-gray-900 flex-1">Coach Chat</h2>
+        <button
+          onClick={() => { setDebugMode((v) => !v); if (debugMode) setDebugPrompt(null); }}
+          className={`text-xs px-2 py-1 rounded transition-colors ${
+            debugMode
+              ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+              : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+          }`}
+          title="Toggle debug mode — shows the system prompt sent to the LLM"
+        >
+          🔍 Debug
+        </button>
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-4">
+        {/* Debug prompt display */}
+        {debugMode && debugPrompt && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50/50">
+            <button
+              onClick={() => setDebugExpanded((v) => !v)}
+              className="w-full flex items-center justify-between px-3 py-2 text-left"
+            >
+              <span className="text-xs font-medium text-amber-700">🔍 System Prompt</span>
+              <svg
+                className={`h-3 w-3 text-amber-500 transition-transform ${debugExpanded ? 'rotate-180' : ''}`}
+                viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {debugExpanded && (
+              <pre className="px-3 pb-3 text-[11px] leading-relaxed font-mono text-amber-900/80 whitespace-pre-wrap max-h-64 overflow-y-auto">
+                {debugPrompt}
+              </pre>
+            )}
+          </div>
+        )}
+        {debugMode && debugLoading && (
+          <div className="text-xs text-amber-600 px-3 py-2">Loading system prompt…</div>
+        )}
         {messages.length === 0 && !isLoading ? (
           /* Empty state */
           <div className="flex flex-col items-center justify-center h-full text-center px-4">
@@ -97,7 +155,7 @@ export function ChatPanel() {
                   {message.role === 'user' ? (
                     <p className="whitespace-pre-wrap">{getMessageText(message)}</p>
                   ) : (
-                    <div className="prose prose-sm max-w-none prose-p:my-1.5 prose-headings:my-2 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-table:my-2 prose-pre:my-2 prose-pre:bg-gray-200 prose-pre:rounded-lg">
+                    <div className="prose prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-headings:font-semibold prose-h1:text-base prose-h2:text-sm prose-h3:text-sm prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-table:my-2 prose-pre:my-2 prose-pre:bg-gray-200 prose-pre:rounded-lg prose-blockquote:my-2 prose-blockquote:border-gray-300 prose-hr:my-3 prose-code:text-gray-800 prose-code:bg-gray-200 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:before:content-[''] prose-code:after:content-[''] prose-td:py-1 prose-th:py-1 [&_br]:hidden">
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
                         {getMessageText(message)}
                       </ReactMarkdown>

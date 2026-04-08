@@ -8,7 +8,7 @@ import { useContextNotes } from '@/hooks/useContextNotes';
 import { LatestReading } from '@/components/LatestReading';
 import { SummaryCard } from '@/components/SummaryCard';
 import { Timeline } from '@/components/Timeline';
-import { LLMPromptDebugger } from '@/components/LLMPromptDebugger';
+
 import { ContextNotesPanel } from '@/components/ContextNotesPanel';
 import { ChatPanel } from '@/components/ChatPanel';
 import type { BloodPressureData } from '@/lib/types/metrics';
@@ -90,16 +90,6 @@ export default function Home() {
           />
         )}
 
-        {/* LLM Prompt Debugger */}
-        {!isLoading && data.length > 0 && (
-          <LLMPromptDebugger
-            readings={data}
-            dayCount={dayCount}
-            diaryEntries={diaryEntries}
-            contextNotes={contextNotes}
-          />
-        )}
-
         {/* Disclaimer footer */}
         {!isLoading && data.length > 0 && (
           <footer className="text-center pb-8">
@@ -174,7 +164,7 @@ export default function Home() {
 
           {/* Desktop: split pane */}
           <div className="hidden md:block h-full">
-            <Group orientation="horizontal">
+            <Group orientation="horizontal" className="h-full">
               <Panel id="dashboard" defaultSize={60} minSize={30}>
                 {dashboardContent}
               </Panel>
