@@ -239,8 +239,10 @@ pct restart 100
 ```bash
 curl -fsSL https://tailscale.com/install.sh | sh
 tailscale up
-tailscale funnel 3000
+tailscale funnel --bg 3000
 ```
+
+The `--bg` flag runs the funnel as a background daemon that survives terminal disconnect and persists across reboots.
 
 This gives you a URL like `https://withings-coach.tailb857c.ts.net`.
 
