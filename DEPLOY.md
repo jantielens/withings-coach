@@ -39,15 +39,13 @@ In the Proxmox web UI:
 SSH into the LXC container and run:
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/<owner>/withings-assistant/main/scripts/install.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/jantielens/withings-coach/main/scripts/install.sh)"
 ```
 
-> ⚠️ Replace `<owner>` with your GitHub username or org.
-
-If the repo is private, clone manually first:
+> ⚠️ If the repo is private, you'll need to authenticate. Clone manually instead:
 
 ```bash
-git clone https://github.com/<owner>/withings-assistant.git /opt/withings-coach
+git clone https://github.com/jantielens/withings-coach.git /opt/withings-coach
 cd /opt/withings-coach
 bash scripts/install.sh
 ```

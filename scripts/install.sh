@@ -16,7 +16,7 @@
 set -euo pipefail
 
 APP_DIR="/opt/withings-coach"
-REPO_URL="${REPO_URL:-https://github.com/<owner>/withings-assistant.git}"
+REPO_URL="${REPO_URL:-https://github.com/jantielens/withings-coach.git}"
 BRANCH="${BRANCH:-main}"
 NODE_MAJOR=20
 
