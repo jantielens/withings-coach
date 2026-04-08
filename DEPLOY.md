@@ -162,7 +162,65 @@ cd /opt/withings-coach && npm run build && pm2 restart withings-coach
 
 Withings OAuth requires HTTPS for callback URLs. Choose one option:
 
-### Option A: Tailscale (easiest, no public exposure)
+### Option A: Cloudflare Tunnel (recommended — free, no ports opened)
+
+Exposes your LXC to the internet via an outbound tunnel. No open ports, no public IP needed — just a domain on Cloudflare (free plan).
+
+**Install cloudflared:**
+
+```bash
+curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg \
+  | gpg --dearmor -o /usr/share/keyrings/cloudflare.gpg
+echo "deb [signed-by=/usr/share/keyrings/cloudflare.gpg] https://pkg.cloudflare.com/cloudflared $(lsb_release -cs) main" \
+  > /etc/apt/sources.list.d/cloudflared.list
+apt-get update && apt-get install -y cloudflared
+```
+
+**Authenticate and create tunnel:**
+
+```bash
+cloudflared tunnel login                    # opens a URL to authorize
+cloudflared tunnel create withings-coach    # creates the tunnel
+```
+
+**Route your subdomain to the tunnel:**
+
+```bash
+cloudflared tunnel route dns withings-coach coach.yourdomain.com
+```
+
+**Create the config file** at `/etc/cloudflared/config.yml`:
+
+```yaml
+tunnel: withings-coach
+credentials-file: /root/.cloudflared/<tunnel-id>.json
+
+ingress:
+  - hostname: coach.yourdomain.com
+    service: http://localhost:3000
+  - service: http_status:404
+```
+
+**Install as a system service (starts on boot):**
+
+```bash
+cloudflared service install
+systemctl enable cloudflared
+systemctl start cloudflared
+```
+
+**Update your .env and rebuild:**
+
+```bash
+# In /opt/withings-coach/.env, set:
+NEXT_PUBLIC_BASE_URL=https://coach.yourdomain.com
+
+cd /opt/withings-coach && npm run build && pm2 restart withings-coach
+```
+
+**Update Withings dashboard** callback URL to: `https://coach.yourdomain.com/api/auth/withings/callback`
+
+### Option B: Tailscale (private access only, no public exposure)
 
 If you only access the app from your own devices:
 
@@ -171,7 +229,7 @@ If you only access the app from your own devices:
 3. Enable HTTPS: `tailscale cert <your-machine>.<tailnet>.ts.net`
 4. Access via: `https://<your-machine>.<tailnet>.ts.net:3000`
 
-### Option B: Caddy Reverse Proxy (automatic TLS with a domain)
+### Option C: Caddy Reverse Proxy (requires open port 443 + a domain)
 
 If you have a domain pointing to your home IP:
 
@@ -193,7 +251,7 @@ systemctl restart caddy
 
 Caddy automatically obtains and renews Let's Encrypt certificates.
 
-### Option C: Nginx + Let's Encrypt
+### Option D: Nginx + Let's Encrypt (requires open port 80+443 + a domain)
 
 ```bash
 apt-get install -y nginx certbot python3-certbot-nginx
