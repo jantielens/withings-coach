@@ -129,6 +129,10 @@ AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
 AZURE_CLIENT_ID=<application-client-id>
 AZURE_CLIENT_SECRET=<client-secret-value>
 AZURE_TENANT_ID=<directory-tenant-id>
+
+# Base URL — the URL users access the app at (used for OAuth callback)
+# ⚠️ This is a build-time variable — run "./scripts/update.sh" after changing it
+NEXT_PUBLIC_BASE_URL=http://<lxc-ip>:3000
 ```
 
 Generate the iron-session password:

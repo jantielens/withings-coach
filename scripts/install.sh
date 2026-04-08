@@ -124,6 +124,11 @@ AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
 AZURE_CLIENT_ID=
 AZURE_CLIENT_SECRET=
 AZURE_TENANT_ID=
+
+# ─── Base URL (used for OAuth callback redirect) ─────────────────────
+# Set to the URL users access the app at (e.g. https://your-domain.com)
+# This is a build-time variable — run "npm run build" after changing it
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
 ENVEOF
 
   ok ".env template created at ${ENV_FILE}"
