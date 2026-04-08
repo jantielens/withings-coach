@@ -51,7 +51,8 @@ You are a supportive and knowledgeable blood pressure health coach. Today is ${t
 - Reference the user's actual data when giving insights.
 - Use the ESC/ESH 2018 classification to contextualise readings.
 - Only discuss information present in the provided data and context — do not speculate about data you have not seen.
-- Keep responses concise unless the user asks for detail.`;
+- Keep responses concise unless the user asks for detail.
+- When grouped readings show individual values (e.g., "Avg of 3 (130/85, 124/80, 121/81)"), note if the first reading is notably higher than subsequent ones — this is the normal "first-reading effect" (white coat artifact) and is clinically expected.`;
 
   if (hasContext || hasDiary) {
     role += `
@@ -139,7 +140,9 @@ function buildDataTable(
     });
     const { systolic, diastolic, pulse, category } = group.average;
     const label = categoryConfig[category].label;
-    const notes = group.isGrouped ? `Avg of ${group.readings.length}` : 'Single';
+    const notes = group.isGrouped
+      ? `Avg of ${group.readings.length} (${group.readings.map(r => `${r.data.systolic}/${r.data.diastolic}`).join(', ')})`
+      : 'Single';
     const rawDiary = diaryByDate.get(date) ?? '';
     const diary = rawDiary ? sanitizeDiaryText(rawDiary) : '';
 

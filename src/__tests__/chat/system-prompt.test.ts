@@ -69,6 +69,31 @@ function makeContextNote(text: string, idx = 0): ContextNote {
   };
 }
 
+function makeGroupedReading(
+  date: string,
+  individualReadings: { systolic: number; diastolic: number; pulse: number }[],
+  avg: { systolic: number; diastolic: number; pulse: number; category: BPCategory }
+): ReadingGroup<BloodPressureData> {
+  return {
+    id: `grp-${date}`,
+    timestamp: `${date}T08:00:00Z`,
+    isGrouped: true,
+    readings: individualReadings.map((r, i) => ({
+      id: `r-${date}-${i}`,
+      type: MetricType.BLOOD_PRESSURE,
+      timestamp: `${date}T08:0${i}:00Z`,
+      source: 'withings' as const,
+      data: {
+        systolic: r.systolic,
+        diastolic: r.diastolic,
+        pulse: r.pulse,
+        category: avg.category,
+      },
+    })),
+    average: avg,
+  };
+}
+
 const baseContext: ChatContext = {
   readings: [],
   diaryEntries: [],
@@ -158,6 +183,42 @@ describe('buildChatSystemPrompt', () => {
   it('handles empty readings array (no data table)', () => {
     const prompt = buildChatSystemPrompt(baseContext);
     expect(prompt).not.toContain('Blood Pressure Data');
+  });
+
+  it('includes individual readings in Notes column for grouped sessions', () => {
+    const ctx: ChatContext = {
+      ...baseContext,
+      readings: [
+        makeGroupedReading(
+          '2025-07-10',
+          [
+            { systolic: 130, diastolic: 85, pulse: 70 },
+            { systolic: 124, diastolic: 80, pulse: 68 },
+            { systolic: 121, diastolic: 81, pulse: 69 },
+          ],
+          { systolic: 125, diastolic: 82, pulse: 69, category: BPCategory.NORMAL }
+        ),
+      ],
+      dayCount: 1,
+    };
+    const prompt = buildChatSystemPrompt(ctx);
+    expect(prompt).toContain('Avg of 3 (130/85, 124/80, 121/81)');
+  });
+
+  it('shows Single in Notes column for ungrouped reading', () => {
+    const ctx: ChatContext = {
+      ...baseContext,
+      readings: [makeReading({ date: '2025-07-10' })],
+      dayCount: 1,
+    };
+    const prompt = buildChatSystemPrompt(ctx);
+    expect(prompt).toContain('| Single |');
+  });
+
+  it('includes first-reading effect guideline in role section', () => {
+    const prompt = buildChatSystemPrompt(baseContext);
+    expect(prompt).toContain('first-reading effect');
+    expect(prompt).toContain('white coat artifact');
   });
 });
 
