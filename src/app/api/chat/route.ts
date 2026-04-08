@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
 
     // Fetch health data, diary entries, and context notes in parallel
     const bpConfig = getMetricConfig(MetricType.BLOOD_PRESSURE)!;
-    const healthService = new HealthDataService(bpConfig.adapter, authResult.auth);
+    const healthService = new HealthDataService(bpConfig.adapter, authResult.auth, authResult.userId);
 
     const [bpResponse, diaryEntries, contextNotes] = await Promise.all([
       healthService.getMetrics<BloodPressureData>(

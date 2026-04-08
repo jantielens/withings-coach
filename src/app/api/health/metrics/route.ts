@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
   if (authError) return authError;
 
   try {
-    const service = new HealthDataService(metricConfig.adapter, authResult.auth);
+    const service = new HealthDataService(metricConfig.adapter, authResult.auth, authResult.userId);
     const response = await service.getMetrics(
       type as MetricType,
       dateRange,

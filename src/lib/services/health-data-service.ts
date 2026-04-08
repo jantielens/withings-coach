@@ -10,11 +10,13 @@ import {
   ReadingGroup,
 } from '@/lib/types/metrics';
 import { classifyBloodPressure } from '@/lib/classification/blood-pressure';
+import { metricsCache } from '@/lib/services/metrics-cache';
 
 export class HealthDataService {
   constructor(
     private adapter: DataSourceAdapter,
-    private auth: AuthProvider
+    private auth: AuthProvider,
+    private userId?: string
   ) {}
 
   async getMetrics<T>(
@@ -22,7 +24,25 @@ export class HealthDataService {
     dateRange: DateRange,
     includeSummary: boolean = true
   ): Promise<MetricsResponse<T>> {
-    const metrics = await this.adapter.fetchMetrics<T>(type, dateRange, this.auth);
+    const fromISO = dateRange.from.toISOString();
+    const toISO = dateRange.to.toISOString();
+
+    // Try cache first (server-side only, keyed per user)
+    let metrics: HealthMetric<T>[] | null = null;
+    if (this.userId) {
+      metrics = metricsCache.get<T>(this.userId, type, fromISO, toISO);
+      if (metrics) {
+        console.log(`[Cache] HIT for ${this.userId}:${type} (${dateRange.from.toISOString().slice(0, 10)} → ${dateRange.to.toISOString().slice(0, 10)})`);
+      }
+    }
+
+    if (!metrics) {
+      metrics = await this.adapter.fetchMetrics<T>(type, dateRange, this.auth);
+      if (this.userId) {
+        metricsCache.set(this.userId, type, fromISO, toISO, metrics);
+        console.log(`[Cache] MISS — stored ${metrics.length} readings for ${this.userId}:${type}`);
+      }
+    }
 
     let groups: ReadingGroup<T>[];
     if (type === MetricType.BLOOD_PRESSURE) {

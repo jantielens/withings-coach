@@ -9,6 +9,7 @@ import { useContextNotes } from '@/hooks/useContextNotes';
 import { LatestReading } from '@/components/LatestReading';
 import { SummaryCard } from '@/components/SummaryCard';
 import { Timeline } from '@/components/Timeline';
+import { PeriodSelector, PERIOD_OPTIONS } from '@/components/PeriodSelector';
 
 import { ContextNotesPanel } from '@/components/ContextNotesPanel';
 import { ChatPanel } from '@/components/ChatPanel';
@@ -51,9 +52,11 @@ function Dashboard({
   setChatOpen: (fn: (prev: boolean) => boolean) => void;
   logout: () => Promise<void>;
 }) {
+  const [periodDays, setPeriodDays] = useState(30);
+
   const { data, summary, isLoading, error, refresh } = useHealthData<BloodPressureData>({
     metricType: 'blood_pressure',
-    dateRange: { days: 30 },
+    dateRange: { days: periodDays },
   });
 
   const latestReading = data.length > 0
@@ -66,7 +69,7 @@ function Dashboard({
 
   const dayCount = data.length > 0
     ? new Set(data.map((g) => g.timestamp.slice(0, 10))).size
-    : 30;
+    : periodDays;
 
   // Compute date range from readings for diary fetch
   const dateRange = data.length > 0
@@ -147,7 +150,9 @@ function Dashboard({
         <div className={`${chatOpen ? '' : 'max-w-4xl'} mx-auto px-4 sm:px-6 py-4 flex items-center justify-between`}>
           <div>
             <h1 className="text-xl font-bold text-gray-900">Withings Coach</h1>
-            <p className="text-sm text-gray-500">Last {dayCount} days</p>
+            <div className="mt-1">
+              <PeriodSelector selectedDays={periodDays} onChange={setPeriodDays} disabled={isLoading} />
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <button
