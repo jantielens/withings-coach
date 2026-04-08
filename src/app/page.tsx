@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+import { Group, Panel, Separator } from 'react-resizable-panels';
 import { useHealthData } from '@/hooks/useHealthData';
 import { useDiaryEntries } from '@/hooks/useDiaryEntries';
 import { useContextNotes } from '@/hooks/useContextNotes';
@@ -8,9 +10,12 @@ import { SummaryCard } from '@/components/SummaryCard';
 import { Timeline } from '@/components/Timeline';
 import { LLMPromptDebugger } from '@/components/LLMPromptDebugger';
 import { ContextNotesPanel } from '@/components/ContextNotesPanel';
+import { ChatPanel } from '@/components/ChatPanel';
 import type { BloodPressureData } from '@/lib/types/metrics';
 
 export default function Home() {
+  const [chatOpen, setChatOpen] = useState(false);
+
   const { data, summary, isLoading, error, refresh } = useHealthData<BloodPressureData>({
     metricType: 'blood_pressure',
     dateRange: { days: 30 },
@@ -44,41 +49,9 @@ export default function Home() {
 
   const { notes: contextNotes, createNote: createContextNote, deleteNote: deleteContextNote, isLoading: isContextLoading } = useContextNotes();
 
-  return (
-    <div className="flex flex-col flex-1 bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">Withings Coach</h1>
-            <p className="text-sm text-gray-500">Last {dayCount} days</p>
-          </div>
-          <button
-            onClick={refresh}
-            disabled={isLoading}
-            className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <svg
-              className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-              />
-            </svg>
-            Refresh
-          </button>
-        </div>
-      </header>
-
-      {/* Main content */}
-      <main className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 py-6 space-y-6">
+  const dashboardContent = (
+    <div className="h-full overflow-y-auto">
+      <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 py-6 space-y-6">
         {/* Latest Reading */}
         {isLoading ? (
           <div className="rounded-2xl bg-white p-8 shadow-sm border border-gray-100 animate-pulse">
@@ -138,7 +111,85 @@ export default function Home() {
             </p>
           </footer>
         )}
-      </main>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="flex flex-col flex-1 bg-gray-50">
+      {/* Header */}
+      <header className="bg-white border-b border-gray-100 sticky top-0 z-50">
+        <div className={`${chatOpen ? '' : 'max-w-4xl'} mx-auto px-4 sm:px-6 py-4 flex items-center justify-between`}>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Withings Coach</h1>
+            <p className="text-sm text-gray-500">Last {dayCount} days</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={refresh}
+              disabled={isLoading}
+              className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <svg
+                className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+              Refresh
+            </button>
+            <button
+              onClick={() => setChatOpen((prev) => !prev)}
+              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                chatOpen
+                  ? 'bg-gray-200 text-gray-900 hover:bg-gray-300'
+                  : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+              }`}
+              aria-label={chatOpen ? 'Close chat' : 'Open chat'}
+            >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              <span className="hidden sm:inline">Chat</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main content */}
+      {chatOpen ? (
+        <div className="flex-1 min-h-0">
+          {/* Mobile: show chat only */}
+          <div className="block md:hidden h-full">
+            <ChatPanel />
+          </div>
+
+          {/* Desktop: split pane */}
+          <div className="hidden md:block h-full">
+            <Group orientation="horizontal">
+              <Panel id="dashboard" defaultSize={60} minSize={30}>
+                {dashboardContent}
+              </Panel>
+              <Separator className="w-px bg-gray-200 hover:bg-blue-400 transition-colors data-[resize-handle-active]:bg-blue-500" />
+              <Panel id="chat" defaultSize={40} minSize={20}>
+                <ChatPanel />
+              </Panel>
+            </Group>
+          </div>
+        </div>
+      ) : (
+        <main className="flex-1">
+          {dashboardContent}
+        </main>
+      )}
     </div>
   );
 }
