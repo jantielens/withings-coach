@@ -1,0 +1,288 @@
+# Deploying Withings Coach to Proxmox
+
+This guide walks you through deploying Withings Coach on a Proxmox LXC container, step by step.
+
+## Overview
+
+```
+Proxmox LXC (Debian/Ubuntu)
+  ├─ Node.js 20 + pm2
+  ├─ Withings Coach (Next.js on port 3000)
+  ├─ SQLite database (local filesystem)
+  ├─ Service Principal → Azure AI Foundry
+  └─ (optional) Reverse proxy for HTTPS
+```
+
+**Azure resources needed:** Only Azure AI Foundry (pre-existing). No App Service, no database, no storage accounts.
+
+---
+
+## Step 1: Create the LXC Container
+
+In the Proxmox web UI:
+
+1. Click **Create CT** (top right)
+2. Choose a **Debian 12** or **Ubuntu 24.04** template
+3. Recommended specs:
+   - **CPU:** 2 cores
+   - **RAM:** 1024 MB (1 GB)
+   - **Disk:** 8 GB
+4. Enable **Start at boot** under Options
+5. Start the container
+
+> 💡 **Tip:** If your Proxmox host uses ZFS, the LXC filesystem is automatically snapshotted — free backups of your diary database.
+
+---
+
+## Step 2: Run the Install Script
+
+SSH into the LXC container and run:
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/<owner>/withings-assistant/main/scripts/install.sh)"
+```
+
+> ⚠️ Replace `<owner>` with your GitHub username or org.
+
+If the repo is private, clone manually first:
+
+```bash
+git clone https://github.com/<owner>/withings-assistant.git /opt/withings-coach
+cd /opt/withings-coach
+bash scripts/install.sh
+```
+
+The script installs Node.js 20, pm2, clones the repo, builds the app, and generates a `.env` template.
+
+---
+
+## Step 3: Create an Azure Service Principal
+
+The app uses Azure AI Foundry for the chat feature. Since we're not running on Azure, we authenticate with a service principal.
+
+### 3a. Create the App Registration
+
+1. Go to [Azure Portal → Entra ID → App registrations](https://portal.azure.com/#view/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/~/RegisteredApps)
+2. Click **New registration**
+3. Name: `withings-coach`
+4. Supported account types: **Single tenant**
+5. Click **Register**
+6. Note the **Application (client) ID** and **Directory (tenant) ID** from the overview page
+
+### 3b. Create a Client Secret
+
+1. In the app registration, go to **Certificates & secrets**
+2. Click **New client secret**
+3. Description: `withings-coach-prod`
+4. Expiry: 24 months (set a calendar reminder to rotate)
+5. Click **Add**
+6. **Copy the secret value immediately** — it won't be shown again
+
+### 3c. Grant Access to AI Foundry
+
+1. Go to your **Azure AI Foundry** resource in the Azure Portal
+2. Go to **Access control (IAM)**
+3. Click **Add → Add role assignment**
+4. Role: **Cognitive Services OpenAI User**
+5. Members: Select the `withings-coach` app registration
+6. Click **Review + assign**
+
+---
+
+## Step 4: Configure Withings OAuth
+
+1. Go to [Withings Developer Dashboard](https://developer.withings.com/dashboard/)
+2. Select your application (or create one)
+3. Under **OAuth 2.0 settings**, add a callback URL:
+   - If using a domain: `https://your-domain.com/api/auth/withings/callback`
+   - If using Tailscale: `https://your-machine.tailnet-name.ts.net:3000/api/auth/withings/callback`
+   - For testing (HTTP): `http://<lxc-ip>:3000/api/auth/withings/callback`
+4. Note your **Client ID** and **Client Secret**
+
+> ⚠️ Withings requires HTTPS for production callback URLs. See Step 6 for TLS options.
+
+---
+
+## Step 5: Fill in the .env File
+
+Edit the environment file:
+
+```bash
+nano /opt/withings-coach/.env
+```
+
+Fill in all values:
+
+```bash
+NODE_ENV=production
+
+# Iron Session — generate with: openssl rand -base64 32
+IRON_SESSION_PASSWORD=<paste-generated-value>
+
+# Withings OAuth (from Step 4)
+WITHINGS_CLIENT_ID=<your-withings-client-id>
+WITHINGS_CLIENT_SECRET=<your-withings-client-secret>
+
+# Azure AI Foundry (your existing resource)
+AZURE_OPENAI_RESOURCE_NAME=<your-ai-foundry-resource-name>
+AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
+
+# Azure Service Principal (from Step 3)
+AZURE_CLIENT_ID=<application-client-id>
+AZURE_CLIENT_SECRET=<client-secret-value>
+AZURE_TENANT_ID=<directory-tenant-id>
+```
+
+Generate the iron-session password:
+
+```bash
+openssl rand -base64 32
+```
+
+After saving, restart the app:
+
+```bash
+cd /opt/withings-coach && pm2 restart withings-coach
+```
+
+---
+
+## Step 6: Set Up HTTPS (TLS)
+
+Withings OAuth requires HTTPS for callback URLs. Choose one option:
+
+### Option A: Tailscale (easiest, no public exposure)
+
+If you only access the app from your own devices:
+
+1. Install Tailscale on the LXC: `curl -fsSL https://tailscale.com/install.sh | sh`
+2. Authenticate: `tailscale up`
+3. Enable HTTPS: `tailscale cert <your-machine>.<tailnet>.ts.net`
+4. Access via: `https://<your-machine>.<tailnet>.ts.net:3000`
+
+### Option B: Caddy Reverse Proxy (automatic TLS with a domain)
+
+If you have a domain pointing to your home IP:
+
+```bash
+apt-get install -y caddy
+```
+
+Edit `/etc/caddy/Caddyfile`:
+
+```
+your-domain.com {
+    reverse_proxy localhost:3000
+}
+```
+
+```bash
+systemctl restart caddy
+```
+
+Caddy automatically obtains and renews Let's Encrypt certificates.
+
+### Option C: Nginx + Let's Encrypt
+
+```bash
+apt-get install -y nginx certbot python3-certbot-nginx
+```
+
+Create `/etc/nginx/sites-available/withings-coach`:
+
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
+
+```bash
+ln -s /etc/nginx/sites-available/withings-coach /etc/nginx/sites-enabled/
+nginx -t && systemctl reload nginx
+certbot --nginx -d your-domain.com
+```
+
+---
+
+## Step 7: Verify the Deployment
+
+1. **Check the app is running:**
+   ```bash
+   pm2 status
+   curl -s http://localhost:3000 | head -5
+   ```
+
+2. **Open in browser:**
+   - `http://<lxc-ip>:3000` (local network)
+   - `https://your-domain.com` (if TLS is set up)
+
+3. **Log in with Withings** — click the login button, authorize with your Withings account
+
+4. **Test the chat** — open the chat panel, ask "how's my blood pressure this week?"
+
+5. **Check logs if something's wrong:**
+   ```bash
+   pm2 logs withings-coach
+   ```
+
+---
+
+## Updating
+
+When you want to deploy the latest version:
+
+```bash
+cd /opt/withings-coach
+./scripts/update.sh
+```
+
+This pulls the latest code, rebuilds, and restarts — takes about 30 seconds.
+
+---
+
+## Useful Commands
+
+| Command | What it does |
+|---------|-------------|
+| `pm2 status` | Check if the app is running |
+| `pm2 logs withings-coach` | View app logs |
+| `pm2 restart withings-coach` | Restart the app |
+| `pm2 stop withings-coach` | Stop the app |
+| `cd /opt/withings-coach && ./scripts/update.sh` | Pull latest + rebuild + restart |
+
+---
+
+## Troubleshooting
+
+### "Session expired" after login
+The `IRON_SESSION_PASSWORD` may have changed, or cookies are stale. Clear browser cookies and try again.
+
+### Chat returns "Authentication failed"
+Check that `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, and `AZURE_TENANT_ID` are correct in `.env`, and that the service principal has the "Cognitive Services OpenAI User" role on your AI Foundry resource.
+
+### Withings OAuth callback fails
+- Ensure the callback URL in the Withings dashboard matches exactly (including `https://`)
+- Ensure TLS is working (Withings rejects HTTP callbacks in production)
+- Check `pm2 logs` for the specific error
+
+### Build fails on update
+```bash
+cd /opt/withings-coach
+rm -rf .next node_modules
+npm ci
+npm run build
+pm2 restart withings-coach
+```
