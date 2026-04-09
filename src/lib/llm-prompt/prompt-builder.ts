@@ -138,13 +138,9 @@ function buildDataTable(
   }
 
   const rows = sorted.map((group) => {
-    const dt = new Date(group.timestamp);
-    const date = dt.toISOString().slice(0, 10);
-    const time = dt.toLocaleTimeString('en-GB', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    });
+    const iso = new Date(group.timestamp).toISOString();
+    const date = iso.slice(0, 10);
+    const time = iso.slice(11, 16);
     const { systolic, diastolic, pulse, category } = group.average;
     const label = categoryConfig[category].label;
     const notes = group.isGrouped ? `Avg of ${group.readings.length}` : 'Single';
@@ -160,7 +156,7 @@ function buildDataTable(
 
   return `## Data
 
-| Date | Time | SYS | DIA | Pulse | Category | Notes | Diary |
+| Date | Time (UTC) | SYS | DIA | Pulse | Category | Notes | Diary |
 |------|------|-----|-----|-------|----------|-------|-------|
 ${rows.join('\n')}
 
