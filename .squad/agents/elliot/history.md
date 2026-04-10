@@ -474,3 +474,16 @@ Evaluated 5 chat UI solutions:
 - **ChatPanel.tsx — timezone via transport `body`:** In the current AI SDK version (`@ai-sdk/react` + `ai`), the `useChat` hook no longer accepts `body` directly. The `body` option lives on `HttpChatTransportInitOptions`, so you must pass it through `new DefaultChatTransport({ body: { ... } })`. This sends the browser timezone (`Intl.DateTimeFormat().resolvedOptions().timeZone`) with every chat request for backend date awareness.
 - **Timeline.tsx — local-date diary lookup:** The `getDayKey()` function uses `new Date().getFullYear()/.getMonth()/.getDate()` (local time), but the diary lookup was using `.slice(0, 10)` on the ISO timestamp (UTC). For readings near midnight in positive UTC-offset timezones, these disagree. Fixed to use the same local-date extraction as `getDayKey()`, with `getMonth() + 1` and zero-padding for YYYY-MM-DD format.
 - **Pre-existing test error:** `src/__tests__/chat/system-prompt.test.ts` has a type error (`timezone` missing from `ChatContext`) — that's from Turk's backend work, not my changes. Carla owns tests.
+
+### 2026-04-10 — Timezone Offset Fix (Frontend)
+
+**Session:** Timezone Offset Fix Sprint  
+**Outcome:** Browser timezone capture + Timeline diary lookup fix complete
+
+**Implementation:**
+- `src/components/ChatPanel.tsx`: Sends IANA timezone via `DefaultChatTransport({ body: { timezone } })` pattern (required by Vercel AI SDK v6)
+- `src/components/Timeline.tsx:174`: Fixed diary lookup to use local date extraction consistent with `getDayKey()`
+
+**Key Learning:** Vercel AI SDK v6 no longer accepts top-level `body` option in `useChat()`. Must explicitly create `DefaultChatTransport` and pass via `transport` option. Documented in decisions.md.
+
+**Status:** ✅ Complete. All tests passing. Ready for merge.

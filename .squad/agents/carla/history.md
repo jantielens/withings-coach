@@ -35,3 +35,21 @@
 
 All user story contracts from PRD mapped to tests. Test suite documents expected API/service/hook/component behavior. Service/API tests use stubs that will integrate with actual implementations in Phase 2.
 
+
+### 2026-04-10 — Timezone Offset Fix (Test Coverage)
+
+**Session:** Timezone Offset Fix Sprint  
+**Outcome:** 17 new timezone test cases written, 136 total tests passing
+
+**Tests Added:**
+- Timezone formatting (IANA → local time/date)
+- Date boundary cases (00:00–01:59 CEST edge cases)
+- Diary entry matching with local timezone
+- Fallback behavior (missing/invalid timezone → UTC)
+- Cross-timezone consistency (CET, CEST, UTC, other zones)
+
+**Files Updated:**
+- `src/__tests__/chat/system-prompt.test.ts`
+- `src/__tests__/llm-prompt/prompt-builder.test.ts`
+
+**Status:** ✅ Complete. All 136 tests passing. Ready for merge.

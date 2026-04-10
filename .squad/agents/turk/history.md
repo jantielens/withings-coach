@@ -285,3 +285,20 @@ export async function POST(req: Request) {
 - `src/lib/chat/azure-client.ts` — New client
 - `.squad/orchestration-log/2026-04-08T09-57-turk.md` — Agent orchestration log
 - `.squad/log/2026-04-08-chatbot-implementation.md` — Session summary
+
+### 2026-04-10 — Timezone Offset Fix (Implementation)
+
+**Session:** Timezone Offset Fix Sprint  
+**Outcome:** Timezone plumbing complete across chat API and prompt builders
+
+**Implementation:**
+- `src/app/api/chat/route.ts`: Accepts `timezone` from request body
+- `src/app/api/chat/prompt/route.ts`: Passes timezone through ChatContext
+- `src/lib/chat/system-prompt.ts`: Formats dates/times using local timezone
+- `src/lib/llm-prompt/prompt-builder.ts`: Prompt builder formats readings in local TZ
+
+**Approach:** Uses `toLocaleTimeString('en-GB', { timeZone, hour12: false })` for 24-hour format and `toLocaleDateString('sv-SE', { timeZone })` for ISO dates. Fallback to UTC if timezone missing/invalid.
+
+**Backward Compatible:** Falls back to UTC with "Time (UTC)" header if timezone unavailable.
+
+**Status:** ✅ Complete. 136 tests passing. Ready for merge.

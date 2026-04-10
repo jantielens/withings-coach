@@ -2,6 +2,67 @@
 
 ## Active Decisions
 
+### Timezone Offset Fix — Pass Browser Timezone to Chat API (2026-04-10)
+
+**From:** Cox (Lead / Architect)  
+**Status:** 🔶 Recommended — Ready for Implementation  
+**Severity:** High — User-visible data mismatch + date boundary risk
+
+#### Diagnosis
+
+- Root cause: Chat prompt uses `toISOString()` (UTC) while dashboard uses `toLocaleTimeString()` (local)
+- 2-hour offset for CEST users (06:00 UTC shown as 08:00 local)
+- Date boundary bug: Readings between 00:00–01:59 CEST map to previous day in UTC
+- Secondary bug: `Timeline.tsx:174` diary lookup inconsistent with `getDayKey()` (UTC vs. local)
+
+#### Recommendation: Option A — Pass browser IANA timezone
+
+**Implementation Plan:**
+1. Browser sends `Intl.DateTimeFormat().resolvedOptions().timeZone` with chat requests
+2. API route accepts and passes timezone to prompt builders
+3. Prompt builder formats dates/times using `toLocaleString(locale, { timeZone })`
+4. Timeline.tsx fixes diary lookup to use local date extraction
+5. Fallback to UTC if timezone missing/invalid
+
+**Files to modify:**
+- `src/app/api/chat/route.ts` — accept timezone
+- `src/app/api/chat/prompt/route.ts` — pass timezone
+- `src/lib/chat/system-prompt.ts` — format locally
+- `src/lib/llm-prompt/prompt-builder.ts` — format locally
+- `src/components/ChatPanel.tsx` — send timezone
+- `src/components/Timeline.tsx` — fix diary lookup
+
+**Effort:** ~2–3 hours. No new dependencies, no schema changes.
+
+---
+
+### Vercel AI SDK v6 — useChat Body Pattern (2026-04-10)
+
+**From:** Elliot (Frontend Dev)  
+**Date:** 2026-04-10  
+**Status:** ✅ Implemented
+
+#### Issue
+In Vercel AI SDK v6, `useChat({ body: {...} })` no longer works. The `body` field moved to `HttpChatTransportInitOptions`.
+
+#### Pattern
+```typescript
+import { DefaultChatTransport } from 'ai';
+
+useChat({
+  transport: new DefaultChatTransport({
+    body: {
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    },
+  }),
+});
+```
+
+#### Implication
+All chat body customizations (including timezone from decision above) must use the `DefaultChatTransport` pattern.
+
+---
+
 ### Chatbot Implementation — Code Review (2026-04-08)
 
 **From:** Cox (Lead / Architect)  

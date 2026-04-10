@@ -207,3 +207,16 @@
 **Decision document:** `.squad/decisions/inbox/cox-timezone-offset.md`
 
 **Key Learning:** When a system stores timestamps in UTC (correct) but has multiple rendering paths (UI components vs. server-side prompt building), every rendering path must agree on how to convert to display time. The moment one path uses `toISOString()` and another uses `toLocaleTimeString()`, you get a timezone split. This is especially dangerous in health apps where the LLM's time references must match what the user saw on their dashboard — otherwise trust erodes fast.
+
+### 2026-04-10 — Timezone Offset Fix (Diagnosis & Recommendation)
+
+**Session:** Timezone Offset Fix Sprint  
+**Outcome:** Diagnosis confirmed, decision document written, Option A recommended
+
+**Root Cause:** Chat prompt uses `toISOString()` (UTC) while dashboard uses `toLocaleTimeString()` (local). For CET/CEST users, creates consistent 1–2 hour offset where LLM references readings at wrong time.
+
+**Secondary Bug:** `Timeline.tsx:174` uses UTC date slice for diary lookup but `getDayKey()` uses local-time methods — readings near midnight could get mismatched diary entries.
+
+**Recommendation:** Option A — pass browser IANA timezone from client → API → prompt builder. Format all times in user's local timezone. No new dependencies. ~2–3 hours.
+
+**Merged into decisions.md.** Awaiting approval for implementation.
