@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { streamText, convertToModelMessages, type UIMessage } from 'ai';
 import { createAzureAIClient, getDeploymentName, AzureConfigError } from '@/lib/chat/azure-client';
 import { detectTimeRange } from '@/lib/chat/time-range';
-import { buildChatSystemPrompt, type ChatContext } from '@/lib/chat/system-prompt';
+import { buildChatSystemPrompt, validTimezone, type ChatContext } from '@/lib/chat/system-prompt';
 import { HealthDataService } from '@/lib/services/health-data-service';
 import { requireAuth, WithingsTokenRefreshError } from '@/lib/auth/require-auth';
 import { getMetricConfig } from '@/lib/registry/metric-registry';
@@ -14,7 +14,7 @@ export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   // Parse request body
-  let body: { messages?: UIMessage[] };
+  let body: { messages?: UIMessage[]; timezone?: string };
   try {
     body = await request.json();
   } catch {
@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { messages } = body;
+  const timezone = validTimezone(body.timezone);
 
   if (!messages || !Array.isArray(messages) || messages.length === 0) {
     return NextResponse.json(
@@ -94,6 +95,7 @@ export async function POST(request: NextRequest) {
       contextNotes,
       dateRange,
       dayCount,
+      timezone,
     };
     const systemPrompt = buildChatSystemPrompt(chatContext);
 

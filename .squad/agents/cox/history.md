@@ -189,3 +189,21 @@
 - **Everything else is solid** — architecture alignment is faithful (context-in-prompt, single endpoint, managed identity, split-pane UI). Time range detection is well-tested. System prompt is well-structured with safety disclaimers. Chat UI handles all states correctly.
 
 **Key Learning:** Always verify the actual wire protocol between client and server when using framework abstractions. The Vercel AI SDK v6 changed from `toDataStreamResponse()` to `toUIMessageStreamResponse()` and from simple `{ role, content }` messages to `UIMessage` with `parts`. Type casts (`as Array<{ role, content }>`) hide these mismatches at compile time but crash at runtime. When reviewing streaming integrations, trace the actual bytes: what the client sends, what the server receives, what format the response uses. TypeScript types are documentation, not runtime guarantees.
+
+### 2025-07-21 — Timezone Offset Diagnosis
+
+**Session:** Diagnose 2-hour offset in chat vs. dashboard  
+**Task:** Confirm root cause, assess date boundary risk, recommend fix  
+**Outcome:** ✅ Diagnosis confirmed, decision document written
+
+**Root Cause:** Chat prompt uses `toISOString()` (UTC) for date/time formatting while dashboard UI uses `toLocaleTimeString()` (browser local). For CET/CEST users, this creates a consistent 1–2 hour offset where the LLM references readings at the wrong time.
+
+**Secondary Bug Found:** `Timeline.tsx:174` uses `timestamp.slice(0,10)` (UTC) for diary lookup but `getDayKey()` uses local-time methods — readings near midnight could get mismatched diary entries.
+
+**Date Boundary Risk:** Confirmed real. Readings between 00:00–01:59 CEST map to previous day in UTC, causing potential date misattribution in the chat prompt.
+
+**Recommendation:** Option A — pass browser timezone (`Intl.DateTimeFormat().resolvedOptions().timeZone`) from client → API → prompt builder. Format all times in user's local timezone. No new dependencies needed. Estimated 2–3 hours.
+
+**Decision document:** `.squad/decisions/inbox/cox-timezone-offset.md`
+
+**Key Learning:** When a system stores timestamps in UTC (correct) but has multiple rendering paths (UI components vs. server-side prompt building), every rendering path must agree on how to convert to display time. The moment one path uses `toISOString()` and another uses `toLocaleTimeString()`, you get a timezone split. This is especially dangerous in health apps where the LLM's time references must match what the user saw on their dashboard — otherwise trust erodes fast.

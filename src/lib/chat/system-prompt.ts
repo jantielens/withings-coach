@@ -10,10 +10,22 @@ export interface ChatContext {
   contextNotes: ContextNote[];
   dateRange: ResolvedDateRange;
   dayCount: number;
+  timezone: string;
+}
+
+/** Validate an IANA timezone string. Returns the timezone if valid, 'UTC' otherwise. */
+export function validTimezone(tz: string | undefined | null): string {
+  if (!tz) return 'UTC';
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: tz });
+    return tz;
+  } catch {
+    return 'UTC';
+  }
 }
 
 export function buildChatSystemPrompt(context: ChatContext): string {
-  const { readings, diaryEntries, contextNotes, dateRange, dayCount } = context;
+  const { readings, diaryEntries, contextNotes, dateRange, dayCount, timezone } = context;
   const hasContext = contextNotes.length > 0;
   const hasDiary = diaryEntries.length > 0;
   const todayISO = dateRange.to;
@@ -30,7 +42,7 @@ export function buildChatSystemPrompt(context: ChatContext): string {
   if (diaryCtx) sections.push(diaryCtx);
 
   if (readings.length > 0) {
-    sections.push(buildDataTable(readings, dayCount, dateRange, diaryEntries));
+    sections.push(buildDataTable(readings, dayCount, dateRange, diaryEntries, timezone));
   }
 
   sections.push(buildSafetyDisclaimer());
@@ -117,7 +129,8 @@ function buildDataTable(
   readings: ReadingGroup<BloodPressureData>[],
   dayCount: number,
   dateRange: ResolvedDateRange,
-  diaryEntries: DiaryEntry[]
+  diaryEntries: DiaryEntry[],
+  timezone: string
 ): string {
   const sorted = [...readings].sort(
     (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
@@ -131,9 +144,9 @@ function buildDataTable(
   }
 
   const rows = sorted.map((group) => {
-    const iso = new Date(group.timestamp).toISOString();
-    const date = iso.slice(0, 10);
-    const time = iso.slice(11, 16);
+    const d = new Date(group.timestamp);
+    const date = d.toLocaleDateString('sv-SE', { timeZone: timezone });
+    const time = d.toLocaleTimeString('en-GB', { timeZone: timezone, hour: '2-digit', minute: '2-digit', hour12: false });
     const { systolic, diastolic, pulse, category } = group.average;
     const label = categoryConfig[category].label;
     const notes = group.isGrouped
@@ -147,7 +160,7 @@ function buildDataTable(
 
   return `## Blood Pressure Data (${dateRange.label})
 
-| Date | Time (UTC) | SYS | DIA | Pulse | Category | Notes | Diary |
+| Date | Time (local) | SYS | DIA | Pulse | Category | Notes | Diary |
 |------|------|-----|-----|-------|----------|-------|-------|
 ${rows.join('\n')}
 

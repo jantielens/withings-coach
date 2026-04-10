@@ -2,6 +2,10 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
+jest.mock('ai', () => ({
+  DefaultChatTransport: jest.fn().mockImplementation(() => ({})),
+}));
+
 jest.mock('@ai-sdk/react', () => ({
   useChat: () => ({
     messages: [],
@@ -10,6 +14,7 @@ jest.mock('@ai-sdk/react', () => ({
     status: 'ready',
     error: null,
     clearError: jest.fn(),
+    setMessages: jest.fn(),
   }),
 }));
 

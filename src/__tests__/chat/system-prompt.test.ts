@@ -17,18 +17,20 @@ function makeReading(
     pulse: number;
     category: BPCategory;
     date: string;
+    timestamp: string;
   }> = {}
 ): ReadingGroup<BloodPressureData> {
   const date = overrides.date ?? '2025-07-10';
+  const ts = overrides.timestamp ?? `${date}T08:00:00Z`;
   return {
     id: `grp-${date}`,
-    timestamp: `${date}T08:00:00Z`,
+    timestamp: ts,
     isGrouped: false,
     readings: [
       {
         id: `r-${date}`,
         type: MetricType.BLOOD_PRESSURE,
-        timestamp: `${date}T08:00:00Z`,
+        timestamp: ts,
         source: 'withings',
         data: {
           systolic: overrides.systolic ?? 125,
@@ -100,6 +102,7 @@ const baseContext: ChatContext = {
   contextNotes: [],
   dateRange: { from: '2025-06-15', to: '2025-07-15', label: 'last 30 days' },
   dayCount: 0,
+  timezone: 'UTC',
 };
 
 // ─── Tests ──────────────────────────────────────────────────────────────────
@@ -219,6 +222,119 @@ describe('buildChatSystemPrompt', () => {
     const prompt = buildChatSystemPrompt(baseContext);
     expect(prompt).toContain('first-reading effect');
     expect(prompt).toContain('white coat artifact');
+  });
+});
+
+describe('timezone handling', () => {
+  it('formats time in Europe/Brussels timezone (CEST = UTC+2)', () => {
+    const ctx: ChatContext = {
+      ...baseContext,
+      timezone: 'Europe/Brussels',
+      readings: [makeReading({ timestamp: '2025-07-10T06:00:00Z', date: '2025-07-10' })],
+      dayCount: 1,
+    };
+    const prompt = buildChatSystemPrompt(ctx);
+    expect(prompt).toContain('2025-07-10');
+    expect(prompt).toContain('08:00');
+  });
+
+  it('formats time in America/New_York timezone (EDT = UTC-4)', () => {
+    const ctx: ChatContext = {
+      ...baseContext,
+      timezone: 'America/New_York',
+      readings: [makeReading({ timestamp: '2025-07-10T06:00:00Z', date: '2025-07-10' })],
+      dayCount: 1,
+    };
+    const prompt = buildChatSystemPrompt(ctx);
+    expect(prompt).toContain('2025-07-10');
+    expect(prompt).toContain('02:00');
+  });
+
+  it('formats time in UTC timezone', () => {
+    const ctx: ChatContext = {
+      ...baseContext,
+      timezone: 'UTC',
+      readings: [makeReading({ timestamp: '2025-07-10T06:00:00Z', date: '2025-07-10' })],
+      dayCount: 1,
+    };
+    const prompt = buildChatSystemPrompt(ctx);
+    expect(prompt).toContain('2025-07-10');
+    expect(prompt).toContain('06:00');
+  });
+
+  it('shifts date across midnight boundary for Europe/Brussels timezone', () => {
+    const ctx: ChatContext = {
+      ...baseContext,
+      timezone: 'Europe/Brussels',
+      readings: [makeReading({ timestamp: '2025-07-10T23:30:00Z', date: '2025-07-10' })],
+      dayCount: 1,
+    };
+    const prompt = buildChatSystemPrompt(ctx);
+    // In Brussels (CEST = UTC+2), 23:30 UTC = 01:30 on July 11
+    expect(prompt).toContain('2025-07-11');
+    expect(prompt).toContain('01:30');
+    expect(prompt).not.toContain('| 2025-07-10');
+    expect(prompt).not.toContain('23:30');
+  });
+
+  it('matches diary entry by local date when timezone shifts date across midnight', () => {
+    const ctx: ChatContext = {
+      ...baseContext,
+      timezone: 'Europe/Brussels',
+      readings: [makeReading({ timestamp: '2025-07-10T23:30:00Z', date: '2025-07-10' })],
+      diaryEntries: [
+        makeDiaryEntry('2025-07-11', 'Slept well despite late measurement'),
+      ],
+      dayCount: 1,
+    };
+    const prompt = buildChatSystemPrompt(ctx);
+    // Reading's local date in Brussels is 2025-07-11, so it should match the 07-11 diary
+    const lines = prompt.split('\n');
+    const dataRow = lines.find((l) => l.includes('| 2025-07-11') && l.includes('01:30'));
+    expect(dataRow).toBeDefined();
+    expect(dataRow).toContain('Slept well despite late measurement');
+  });
+
+  it('does NOT match diary entry by UTC date when timezone shifts date across midnight', () => {
+    const ctx: ChatContext = {
+      ...baseContext,
+      timezone: 'Europe/Brussels',
+      readings: [makeReading({ timestamp: '2025-07-10T23:30:00Z', date: '2025-07-10' })],
+      diaryEntries: [
+        makeDiaryEntry('2025-07-10', 'Wrong day diary'),
+      ],
+      dayCount: 1,
+    };
+    const prompt = buildChatSystemPrompt(ctx);
+    // The data row is for 2025-07-11, so the 07-10 diary should NOT appear in the table row
+    const lines = prompt.split('\n');
+    const dataRow = lines.find((l) => l.includes('| 2025-07-11') && l.includes('01:30'));
+    expect(dataRow).toBeDefined();
+    expect(dataRow).not.toContain('Wrong day diary');
+  });
+
+  it('defaults to UTC behavior when timezone is UTC', () => {
+    const ctx: ChatContext = {
+      ...baseContext,
+      timezone: 'UTC',
+      readings: [makeReading({ date: '2025-07-10' })],
+      dayCount: 1,
+    };
+    const prompt = buildChatSystemPrompt(ctx);
+    expect(prompt).toContain('| 2025-07-10');
+    expect(prompt).toContain('08:00');
+  });
+
+  it('uses "Time (local)" column header instead of "Time (UTC)"', () => {
+    const ctx: ChatContext = {
+      ...baseContext,
+      timezone: 'Europe/Brussels',
+      readings: [makeReading({ date: '2025-07-10' })],
+      dayCount: 1,
+    };
+    const prompt = buildChatSystemPrompt(ctx);
+    expect(prompt).toContain('Time (local)');
+    expect(prompt).not.toContain('Time (UTC)');
   });
 });
 

@@ -17,6 +17,17 @@
 
 ## Learnings
 
+**2025-07-27 — Timezone Offset Fix (Chat Prompt):**
+- Root cause: `toISOString().slice()` always formats timestamps in UTC. Jan (CET/CEST, UTC+2) saw a 2-hour offset between dashboard (local time) and chat prompt (UTC).
+- Fix: Pass IANA timezone string (`"Europe/Brussels"`) from browser → chat API → prompt builders. Format with `toLocaleDateString('sv-SE', { timeZone })` (ISO date) and `toLocaleTimeString('en-GB', { timeZone, hour12: false })` (24h HH:MM).
+- `sv-SE` locale trick: gives `YYYY-MM-DD` format without a date library.
+- Timezone validation: `Intl.DateTimeFormat(undefined, { timeZone })` throws on invalid IANA strings — use try/catch to fall back to UTC.
+- Also fixed the date boundary bug: readings between 00:00–01:59 CEST no longer land on the previous day in the prompt, and diary entry matching now uses local dates.
+- Column header changed from "Time (UTC)" to "Time (local)" in both `system-prompt.ts` and `prompt-builder.ts`.
+- `buildBPPrompt()` signature kept backward-compatible — `timezone` is an optional 5th parameter defaulting to `'UTC'`.
+- Files modified: `src/app/api/chat/route.ts`, `src/app/api/chat/prompt/route.ts`, `src/lib/chat/system-prompt.ts`, `src/lib/llm-prompt/prompt-builder.ts`.
+- Note for Carla: Test file `src/__tests__/chat/system-prompt.test.ts` needs `timezone` added to `ChatContext` objects.
+
 **2026-04-07 — Azure AI Foundry Backend Investigation:**
 - **Recommendation:** Use Vercel AI SDK (`ai` + `@ai-sdk/azure`) for LLM chat backend. It abstracts streaming, auth, and React integration into single `streamText()` call.
 - **Authentication:** `DefaultAzureCredential` from `@azure/identity` handles both local dev (`az login` credentials) and production (managed identity on Azure Container Apps).

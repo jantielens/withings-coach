@@ -171,7 +171,8 @@ function TimelineContent({ readings, diaryEntries, onSaveDiary, onDeleteDiary }:
       <div className="relative ml-3">
         <div className="relative">
           {dayEntries.map(([dayKey, dayReadings], idx) => {
-            const dateStr = dayReadings[0].timestamp.slice(0, 10); // YYYY-MM-DD
+            const d = new Date(dayReadings[0].timestamp);
+            const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
             return (
               <Fragment key={dayKey}>
                 <DaySummary

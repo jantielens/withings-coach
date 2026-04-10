@@ -15,6 +15,9 @@
 - **BP classification has no input validation**: `classifyBloodPressure(0, 0)` returns "normal" and negative values don't throw. This is technically correct per the threshold math but clinically nonsensical. Flagged for Turk — consider adding a guard.
 - **Proactive test pattern works**: Writing tests from PRD + decisions.md before implementation is done is viable. 72 tests pass against Turk's actual classification code and type definitions. Service/API/hook/component tests use stubs that document the expected contract — they'll need updates when implementation lands.
 - **Crisis threshold is strict >180 / >120 (not ≥)**: 180/120 exactly classifies as Stage 2, not Crisis. Verified against Turk's implementation. This matches the decisions.md table ("Systolic >180" and "Diastolic >120").
+- **Timezone formatting uses `toLocaleDateString('sv-SE')` and `toLocaleTimeString('en-GB')`**: Both `system-prompt.ts` and `prompt-builder.ts` format dates/times using IANA timezone strings. The `sv-SE` locale produces ISO-format dates (`YYYY-MM-DD`). Column header is "Time (local)" not "Time (UTC)".
+- **Date boundary is the critical timezone edge case**: A UTC timestamp near midnight can shift to a different calendar date in the user's timezone. This affects both the displayed date AND diary-entry matching. Test with `23:30 UTC + Europe/Brussels` → expects `2025-07-11 01:30`, not `2025-07-10 23:30`.
+- **`ChatPanel.test.tsx` has a pre-existing TransformStream failure**: The jsdom environment doesn't define `TransformStream`, causing `eventsource-parser` to fail. Unrelated to any BP/prompt work — tracked separately.
 
 ## Cross-Team Collaboration (2026-04-06 MVE Build)
 

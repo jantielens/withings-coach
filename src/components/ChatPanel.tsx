@@ -7,6 +7,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeRaw from 'rehype-raw';
 import 'highlight.js/styles/github.css';
+import { DefaultChatTransport } from 'ai';
 import type { UIMessage } from 'ai';
 
 const SUGGESTED_PROMPTS = [
@@ -24,7 +25,13 @@ function getMessageText(message: UIMessage): string {
 }
 
 export function ChatPanel() {
-  const { messages, setMessages, sendMessage, stop, status, error, clearError } = useChat();
+  const { messages, setMessages, sendMessage, stop, status, error, clearError } = useChat({
+    transport: new DefaultChatTransport({
+      body: {
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      },
+    }),
+  });
   const [input, setInput] = useState('');
   const [debugMode, setDebugMode] = useState(false);
   const [debugPrompt, setDebugPrompt] = useState<string | null>(null);

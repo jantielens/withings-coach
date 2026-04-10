@@ -468,3 +468,9 @@ Evaluated 5 chat UI solutions:
 - `src/app/page.tsx` — Modified for split-pane layout
 - `.squad/orchestration-log/2026-04-08T09-57-elliot.md` — Agent orchestration log
 - `.squad/log/2026-04-08-chatbot-implementation.md` — Session summary
+
+### 2025-07-28 — Timezone + Timeline diary fix
+
+- **ChatPanel.tsx — timezone via transport `body`:** In the current AI SDK version (`@ai-sdk/react` + `ai`), the `useChat` hook no longer accepts `body` directly. The `body` option lives on `HttpChatTransportInitOptions`, so you must pass it through `new DefaultChatTransport({ body: { ... } })`. This sends the browser timezone (`Intl.DateTimeFormat().resolvedOptions().timeZone`) with every chat request for backend date awareness.
+- **Timeline.tsx — local-date diary lookup:** The `getDayKey()` function uses `new Date().getFullYear()/.getMonth()/.getDate()` (local time), but the diary lookup was using `.slice(0, 10)` on the ISO timestamp (UTC). For readings near midnight in positive UTC-offset timezones, these disagree. Fixed to use the same local-date extraction as `getDayKey()`, with `getMonth() + 1` and zero-padding for YYYY-MM-DD format.
+- **Pre-existing test error:** `src/__tests__/chat/system-prompt.test.ts` has a type error (`timezone` missing from `ChatContext`) — that's from Turk's backend work, not my changes. Carla owns tests.

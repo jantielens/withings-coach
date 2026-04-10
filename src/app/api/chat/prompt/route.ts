@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { detectTimeRange } from '@/lib/chat/time-range';
-import { buildChatSystemPrompt, type ChatContext } from '@/lib/chat/system-prompt';
+import { buildChatSystemPrompt, validTimezone, type ChatContext } from '@/lib/chat/system-prompt';
 import { HealthDataService } from '@/lib/services/health-data-service';
 import { StaticTokenAuth } from '@/lib/auth/static-token-auth';
 import { getMetricConfig } from '@/lib/registry/metric-registry';
@@ -10,6 +10,7 @@ import { MetricType, type BloodPressureData, type ReadingGroup } from '@/lib/typ
 
 export async function GET(request: NextRequest) {
   const query = request.nextUrl.searchParams.get('query') ?? '';
+  const timezone = validTimezone(request.nextUrl.searchParams.get('timezone'));
   if (!query.trim()) {
     return NextResponse.json(
       { error: '"query" parameter is required.' },
@@ -47,6 +48,7 @@ export async function GET(request: NextRequest) {
       contextNotes,
       dateRange,
       dayCount,
+      timezone,
     };
     const prompt = buildChatSystemPrompt(chatContext);
 
